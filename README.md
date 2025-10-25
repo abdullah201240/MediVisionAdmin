@@ -1,36 +1,203 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MediVision Admin Portal
+
+Modern admin dashboard for managing the MediVision medicine management system.
+
+## Features
+
+- 🔐 **Secure Authentication** - Admin-only login with JWT tokens
+- 💊 **Medicine Management** - Full CRUD operations for medicines
+- 👥 **User Management** - View and manage user accounts
+- 📊 **Dashboard Analytics** - Real-time statistics and insights
+- 🎨 **Modern UI** - Built with shadcn/ui components
+- 📱 **Responsive Design** - Works on all devices
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **UI Components**: shadcn/ui (Radix UI)
+- **Styling**: Tailwind CSS 4
+- **State Management**: React Context API
+- **API Client**: Axios
+- **Form Handling**: React Hook Form + Zod
+- **TypeScript**: Full type safety
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ installed
+- Backend server running on `http://localhost:3000`
+- Admin account created in the database
+
+### Installation
+
+1. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Configure environment variables:
+Create `.env.local` file:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3000
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Start the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3001](http://localhost:3001) in your browser
 
-## Learn More
+### Default Admin Login
 
-To learn more about Next.js, take a look at the following resources:
+Use the credentials created via the backend seed script:
+```
+Email: admin@medivision.com
+Password: admin123
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+admin/
+├── app/
+│   ├── dashboard/
+│   │   ├── layout.tsx          # Dashboard layout with sidebar
+│   │   ├── page.tsx             # Dashboard home
+│   │   ├── medicines/           # Medicine management
+│   │   └── users/               # User management
+│   ├── login/
+│   │   └── page.tsx             # Login page
+│   ├── layout.tsx               # Root layout
+│   └── page.tsx                 # Root redirect
+├── components/
+│   └── ui/                      # shadcn/ui components
+├── context/
+│   └── auth-context.tsx         # Authentication context
+├── hooks/
+│   └── use-toast.ts             # Toast notifications
+├── lib/
+│   ├── api.ts                   # API client
+│   └── utils.ts                 # Utility functions
+└── .env.local                   # Environment variables
+```
 
-## Deploy on Vercel
+## Available Pages
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `/login` - Admin login page
+- `/dashboard` - Main dashboard with statistics
+- `/dashboard/medicines` - Medicine management (CRUD)
+- `/dashboard/users` - User management and viewing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## API Integration
+
+The admin portal connects to the NestJS backend API:
+
+### Authentication
+- `POST /auth/login` - Admin login
+- `POST /auth/logout` - Logout
+- `GET /users/profile` - Get current user profile
+
+### Medicines
+- `GET /medicines` - List all medicines
+- `POST /medicines` - Create medicine (admin only)
+- `PATCH /medicines/:id` - Update medicine (admin only)
+- `DELETE /medicines/:id` - Delete medicine (admin only)
+
+### Users
+- `GET /users` - List all users (admin only)
+- `DELETE /users/:id` - Delete user (admin only)
+
+## Features Breakdown
+
+### Dashboard
+- Real-time statistics (total medicines, users, etc.)
+- Quick action cards
+- System status indicators
+
+### Medicine Management
+- Search and filter medicines
+- Create new medicines with full details
+- Edit existing medicine information
+- Delete medicines
+- Image upload support (ready for integration)
+
+### User Management
+- View all registered users
+- Filter by role (admin/user)
+- Delete user accounts
+- User statistics
+
+### Authentication
+- Secure admin-only access
+- JWT token-based authentication
+- HTTP-only cookie storage
+- Auto-redirect for unauthorized access
+
+## Development
+
+### Build for Production
+```bash
+npm run build
+npm start
+```
+
+### Linting
+```bash
+npm run lint
+```
+
+## Security Features
+
+- Admin role verification on login
+- Protected routes with authentication checks
+- HTTP-only cookies for token storage
+- CORS configuration with backend
+- XSS protection via React
+
+## Customization
+
+### Theme Colors
+Edit `app/globals.css` to customize the color scheme:
+```css
+:root {
+  --primary: 221.2 83.2% 53.3%;
+  --secondary: 210 40% 96.1%;
+  /* ... more colors */
+}
+```
+
+### API URL
+Change the API URL in `.env.local`:
+```env
+NEXT_PUBLIC_API_URL=https://your-api-domain.com
+```
+
+## Troubleshooting
+
+### CORS Issues
+Ensure the backend `.env` includes:
+```env
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+```
+
+### Authentication Failed
+1. Verify admin account exists in database
+2. Check backend is running on correct port
+3. Clear browser cookies and try again
+
+### Connection Refused
+- Ensure backend server is running
+- Check `NEXT_PUBLIC_API_URL` matches backend port
+
+## Contributing
+
+1. Follow the existing code structure
+2. Use TypeScript for type safety
+3. Follow shadcn/ui patterns for new components
+4. Test all CRUD operations before committing
+
+## License
+
+Part of the MediVision project.

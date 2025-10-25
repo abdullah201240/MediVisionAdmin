@@ -994,7 +994,7 @@ export default function MedicinesPage() {
                         Browse
                       </Button>
                     </div>
-                    <p className="text-xs text-gray-500">Supported formats: JPG, PNG, GIF (Max 5MB each)</p>
+                    <p className="text-xs text-gray-500">Supported formats: JPG, PNG, GIF, WEBP, JFIF (Max 5MB each)</p>
                   </div>
 
                   {/* Image Preview */}

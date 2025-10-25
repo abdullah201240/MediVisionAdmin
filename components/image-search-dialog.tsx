@@ -153,7 +153,7 @@ export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onView
                 </Button>
               </div>
               <p className="text-sm text-gray-500">
-                JPG, PNG, or GIF • Max 5MB • Best results with clear medicine packaging photos
+                JPG, PNG, GIF, WEBP, JFIF • Max 5MB • Best results with clear medicine packaging photos
               </p>
             </div>
 

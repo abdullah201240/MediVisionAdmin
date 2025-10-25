@@ -18,9 +18,10 @@ interface ImageSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSearchComplete: (results: any[]) => void;
+  onViewMedicine?: (medicineId: string) => void;
 }
 
-export function ImageSearchDialog({ open, onOpenChange, onSearchComplete }: ImageSearchDialogProps) {
+export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onViewMedicine }: ImageSearchDialogProps) {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);

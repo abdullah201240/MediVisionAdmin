@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Pill, Users, Activity, TrendingUp, Camera, Search, ArrowRight } from 'lucide-react';
 import { medicinesApi, usersApi } from '@/lib/api';
 import { ImageSearchDialog } from '@/components/image-search-dialog';
+import { MedicineDetailsModal } from '@/components/medicine-details-modal';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -18,22 +19,49 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedMedicine, setSelectedMedicine] = useState<any>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [medicines, users] = await Promise.all([
-          medicinesApi.getAll(),
-          usersApi.getAll(),
-        ]);
+        // Fetch medicines (no auth required)
+        const medicinesResponse = await medicinesApi.getAll();
+        
+        // Initialize user stats
+        let totalUsers = 0;
+        let activeUsers = 0;
+        
+        try {
+          // Fetch users with pagination to get total count
+          const usersResponse = await usersApi.getAll({ page: 1, limit: 1 });
+          totalUsers = usersResponse.total || 0;
+          
+          // Fetch users with role filter to get active users
+          const activeUsersResponse = await usersApi.getAll({ 
+            page: 1, 
+            limit: 1, 
+            role: 'user' 
+          });
+          activeUsers = activeUsersResponse.total || 0;
+        } catch (usersError: any) {
+          // If we get an unauthorized error, we'll show 0 users
+          console.log('Unable to fetch user stats (likely not authenticated)');
+        }
         
         setStats({
-          totalMedicines: medicines.length,
-          totalUsers: users.length,
-          activeUsers: users.filter((u: any) => u.role === 'user').length,
+          totalMedicines: medicinesResponse.total || medicinesResponse.data?.length || 0,
+          totalUsers: totalUsers,
+          activeUsers: activeUsers,
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
+        // Set default values in case of error
+        setStats({
+          totalMedicines: 0,
+          totalUsers: 0,
+          activeUsers: 0,
+        });
       } finally {
         setLoading(false);
       }
@@ -46,8 +74,9 @@ export default function DashboardPage() {
     setSearchResults(results);
   };
 
-  const handleViewMedicine = (medicineId: string) => {
-    router.push(`/dashboard/medicines?highlight=${medicineId}`);
+  const handleViewMedicine = (medicine: any) => {
+    setSelectedMedicine(medicine);
+    setDetailsModalOpen(true);
   };
 
   const statCards = [
@@ -154,7 +183,7 @@ export default function DashboardPage() {
                     <div
                       key={medicine.id}
                       className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-blue-500 hover:shadow-xl transition-all cursor-pointer group"
-                      onClick={() => handleViewMedicine(medicine.id)}
+                      onClick={() => handleViewMedicine(medicine)}
                     >
                       <div className="space-y-3">
                         {medicine.images && medicine.images.length > 0 ? (
@@ -225,18 +254,24 @@ export default function DashboardPage() {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
+            <div 
+              className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+              onClick={() => router.push('/dashboard/medicines')}
+            >
               <div className="p-2 bg-blue-100 rounded-lg">
                 <Pill className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="font-medium">Add New Medicine</p>
+                <p className="font-medium">Manage Medicines</p>
                 <p className="text-sm text-muted-foreground">
-                  Add a new medicine to the database
+                  View, add, and edit medicine database
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
+            <div 
+              className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+              onClick={() => router.push('/dashboard/users')}
+            >
               <div className="p-2 bg-green-100 rounded-lg">
                 <Users className="h-5 w-5 text-green-600" />
               </div>
@@ -277,11 +312,19 @@ export default function DashboardPage() {
         </Card>
       </div>
       
+      {/* Medicine Details Modal */}
+      <MedicineDetailsModal
+        medicine={selectedMedicine}
+        open={detailsModalOpen}
+        onOpenChange={setDetailsModalOpen}
+      />
+      
       {/* Image Search Dialog */}
       <ImageSearchDialog
         open={imageSearchOpen}
         onOpenChange={setImageSearchOpen}
         onSearchComplete={handleImageSearchComplete}
+        onViewMedicine={handleViewMedicine}
       />
     </div>
   );

@@ -1,17 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Pill, Users, Activity, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Pill, Users, Activity, TrendingUp, Camera, Search, ArrowRight } from 'lucide-react';
 import { medicinesApi, usersApi } from '@/lib/api';
+import { ImageSearchDialog } from '@/components/image-search-dialog';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [stats, setStats] = useState({
     totalMedicines: 0,
     totalUsers: 0,
     activeUsers: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -35,6 +41,14 @@ export default function DashboardPage() {
 
     fetchStats();
   }, []);
+
+  const handleImageSearchComplete = (results: any[]) => {
+    setSearchResults(results);
+  };
+
+  const handleViewMedicine = (medicineId: string) => {
+    router.push(`/dashboard/medicines?highlight=${medicineId}`);
+  };
 
   const statCards = [
     {
@@ -83,6 +97,107 @@ export default function DashboardPage() {
           Welcome to your admin dashboard. Here's what's happening today.
         </p>
       </div>
+
+      {/* Image Search Section */}
+      <Card className="border-2 border-blue-300 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 shadow-lg">
+        <CardHeader className="pb-4">
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-2">
+              <Camera className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-bold text-gray-900">
+                🔍 Search Medicine by Image
+              </CardTitle>
+              <p className="text-base text-gray-700 mt-3 max-w-2xl mx-auto">
+                Upload a clear photo of medicine packaging to instantly find matching medicines in our database
+              </p>
+            </div>
+            <div className="pt-2">
+              <Button
+                size="lg"
+                onClick={() => setImageSearchOpen(true)}
+                className="h-14 px-8 text-lg font-semibold bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+              >
+                <Search className="h-6 w-6 mr-2" />
+                Click Here to Search by Image
+              </Button>
+            </div>
+            <div className="flex items-center justify-center gap-8 text-sm text-gray-600 pt-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Fast & Accurate</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span>Easy to Use</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <span>Instant Results</span>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        
+        {/* Search Results */}
+        {searchResults.length > 0 && (
+          <CardContent className="pt-0">
+            <div className="border-t-2 border-blue-200 pt-6">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <div className="w-1.5 h-6 bg-blue-600 rounded"></div>
+                  Search Results: {searchResults.length} medicine(s) found
+                </h3>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {searchResults.map((medicine) => (
+                    <div
+                      key={medicine.id}
+                      className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-blue-500 hover:shadow-xl transition-all cursor-pointer group"
+                      onClick={() => handleViewMedicine(medicine.id)}
+                    >
+                      <div className="space-y-3">
+                        {medicine.images && medicine.images.length > 0 ? (
+                          <div className="relative overflow-hidden rounded-lg">
+                            <img
+                              src={`http://localhost:3000/uploads/medicines/${medicine.images[0]}`}
+                              alt={medicine.name}
+                              className="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300"
+                            />
+                            <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                              Match
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full h-40 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                            <Pill className="h-16 w-16 text-gray-400" />
+                          </div>
+                        )}
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-lg line-clamp-1">{medicine.name}</h4>
+                          {medicine.nameBn && (
+                            <p className="text-sm text-gray-600 line-clamp-1">{medicine.nameBn}</p>
+                          )}
+                          <p className="text-sm text-blue-600 font-medium mt-1">{medicine.brand || 'No brand'}</p>
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-colors"
+                            >
+                              View Full Details <ArrowRight className="h-4 w-4 ml-1" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -161,6 +276,13 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Image Search Dialog */}
+      <ImageSearchDialog
+        open={imageSearchOpen}
+        onOpenChange={setImageSearchOpen}
+        onSearchComplete={handleImageSearchComplete}
+      />
     </div>
   );
 }

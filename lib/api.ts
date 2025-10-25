@@ -28,8 +28,24 @@ export const authApi = {
 
 // Users API
 export const usersApi = {
-  getAll: async () => {
-    const response = await api.get('/users');
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+    role?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+    if (params?.role) queryParams.append('role', params.role);
+    
+    const url = params ? `/users?${queryParams.toString()}` : '/users';
+    const response = await api.get(url);
     return response.data;
   },
   getById: async (id: string) => {
@@ -48,8 +64,22 @@ export const usersApi = {
 
 // Medicines API
 export const medicinesApi = {
-  getAll: async () => {
-    const response = await api.get('/medicines');
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+    
+    const url = params ? `/medicines?${queryParams.toString()}` : '/medicines';
+    const response = await api.get(url);
     return response.data;
   },
   getById: async (id: string) => {

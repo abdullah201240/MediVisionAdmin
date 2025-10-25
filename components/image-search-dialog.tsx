@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Upload, X, Image as ImageIcon, Loader2, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { medicinesApi } from '@/lib/api';
 
 interface ImageSearchDialogProps {
   open: boolean;
@@ -27,6 +28,17 @@ export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onView
   const [isSearching, setIsSearching] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Clear state when dialog opens/closes
+  useEffect(() => {
+    if (!open) {
+      setSelectedImage(null);
+      setImagePreview('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }, [open]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -84,17 +96,8 @@ export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onView
       const formData = new FormData();
       formData.append('image', selectedImage);
 
-      const response = await fetch('http://localhost:3000/medicines/search-by-image', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Search failed');
-      }
-
-      const results = await response.json();
+      // Use the medicinesApi with cache-busting
+      const results = await medicinesApi.searchByImage(formData);
       
       toast({
         title: 'Search Complete',
@@ -104,11 +107,11 @@ export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onView
       onSearchComplete(results);
       onOpenChange(false);
       handleRemoveImage();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Image search error:', error);
       toast({
         title: 'Search Failed',
-        description: 'Failed to search by image. Please try again.',
+        description: error.response?.data?.message || 'Failed to search by image. Please try again.',
         variant: 'destructive',
       });
     } finally {

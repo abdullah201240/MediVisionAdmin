@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Pill, Users, Activity, TrendingUp, Camera, Search, ArrowRight } from 'lucide-react';
+import { Pill, Users, Activity, TrendingUp, Camera, Search, ArrowRight, RefreshCw } from 'lucide-react';
 import { medicinesApi, usersApi } from '@/lib/api';
 import { ImageSearchDialog } from '@/components/image-search-dialog';
 import { MedicineDetailsModal } from '@/components/medicine-details-modal';
@@ -21,57 +21,78 @@ export default function DashboardPage() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedMedicine, setSelectedMedicine] = useState<any>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Clear search results when dialog opens
+  useEffect(() => {
+    if (imageSearchOpen) {
+      setSearchResults([]);
+    }
+  }, [imageSearchOpen]);
+
+  const fetchStats = async () => {
+    try {
+      // Fetch medicines (no auth required)
+      const medicinesResponse = await medicinesApi.getAll();
+      
+      // Initialize user stats
+      let totalUsers = 0;
+      let activeUsers = 0;
+      
+      try {
+        // Fetch users with pagination to get total count
+        const usersResponse = await usersApi.getAll({ page: 1, limit: 1 });
+        totalUsers = usersResponse.total || 0;
+        
+        // Fetch users with role filter to get active users
+        const activeUsersResponse = await usersApi.getAll({ 
+          page: 1, 
+          limit: 1, 
+          role: 'user' 
+        });
+        activeUsers = activeUsersResponse.total || 0;
+      } catch (usersError: any) {
+        // If we get an unauthorized error, we'll show 0 users
+        console.log('Unable to fetch user stats (likely not authenticated)');
+      }
+      
+      setStats({
+        totalMedicines: medicinesResponse.total || medicinesResponse.data?.length || 0,
+        totalUsers: totalUsers,
+        activeUsers: activeUsers,
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      // Set default values in case of error
+      setStats({
+        totalMedicines: 0,
+        totalUsers: 0,
+        activeUsers: 0,
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        // Fetch medicines (no auth required)
-        const medicinesResponse = await medicinesApi.getAll();
-        
-        // Initialize user stats
-        let totalUsers = 0;
-        let activeUsers = 0;
-        
-        try {
-          // Fetch users with pagination to get total count
-          const usersResponse = await usersApi.getAll({ page: 1, limit: 1 });
-          totalUsers = usersResponse.total || 0;
-          
-          // Fetch users with role filter to get active users
-          const activeUsersResponse = await usersApi.getAll({ 
-            page: 1, 
-            limit: 1, 
-            role: 'user' 
-          });
-          activeUsers = activeUsersResponse.total || 0;
-        } catch (usersError: any) {
-          // If we get an unauthorized error, we'll show 0 users
-          console.log('Unable to fetch user stats (likely not authenticated)');
-        }
-        
-        setStats({
-          totalMedicines: medicinesResponse.total || medicinesResponse.data?.length || 0,
-          totalUsers: totalUsers,
-          activeUsers: activeUsers,
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-        // Set default values in case of error
-        setStats({
-          totalMedicines: 0,
-          totalUsers: 0,
-          activeUsers: 0,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchStats();
   }, []);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchStats();
+  };
+
   const handleImageSearchComplete = (results: any[]) => {
-    setSearchResults(results);
+    // Clear previous results before setting new ones
+    setSearchResults([]);
+    // Small delay to ensure DOM updates
+    setTimeout(() => {
+      setSearchResults(results);
+    }, 50);
+    // Refresh stats after successful search to ensure they're up to date
+    fetchStats();
   };
 
   const handleViewMedicine = (medicine: any) => {
@@ -120,11 +141,23 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        <p className="text-muted-foreground mt-2">
-          Welcome to your admin dashboard. Here's what's happening today.
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+          <p className="text-muted-foreground mt-2">
+            Welcome to your admin dashboard. Here's what's happening today.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       {/* Image Search Section */}

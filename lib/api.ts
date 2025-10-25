@@ -110,6 +110,14 @@ export const medicinesApi = {
     const response = await api.delete(`/medicines/${id}/images/${imageName}`);
     return response.data;
   },
+  searchByImage: async (formData: FormData) => {
+    const response = await api.post('/medicines/search-by-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };
 
 export default api;

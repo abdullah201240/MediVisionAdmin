@@ -90,8 +90,8 @@ export default function UsersPage() {
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to fetch users',
+        title: 'User Fetch Failed',
+        description: 'Failed to fetch users. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -105,14 +105,15 @@ export default function UsersPage() {
     try {
       await usersApi.delete(id);
       toast({
-        title: 'Success',
-        description: 'User deleted successfully',
+        title: 'User Deleted',
+        description: `User "${userName}" has been successfully deleted.`,
+        variant: 'success',
       });
       fetchUsers();
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to delete user',
+        title: 'Deletion Failed',
+        description: 'Failed to delete user. Please try again.',
         variant: 'destructive',
       });
     }
@@ -419,13 +420,23 @@ export default function UsersPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(user.id, user.name)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.push(`/dashboard/users/${user.id}`)}
+                            title="View User Details"
+                          >
+                            <UserCheck className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(user.id, user.name)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

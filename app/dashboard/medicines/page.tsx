@@ -163,8 +163,8 @@ export default function MedicinesPage() {
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to fetch medicines',
+        title: 'Medicine Fetch Failed',
+        description: 'Failed to fetch medicines. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -190,14 +190,16 @@ export default function MedicinesPage() {
       if (editingMedicine) {
         await medicinesApi.update(editingMedicine.id, formDataToSend);
         toast({
-          title: 'Success',
-          description: 'Medicine updated successfully',
+          title: 'Medicine Updated',
+          description: 'Medicine information has been successfully updated.',
+          variant: 'success',
         });
       } else {
         await medicinesApi.create(formDataToSend);
         toast({
-          title: 'Success',
-          description: 'Medicine created successfully',
+          title: 'Medicine Created',
+          description: 'New medicine has been successfully added to the database.',
+          variant: 'success',
         });
       }
 
@@ -206,8 +208,8 @@ export default function MedicinesPage() {
       fetchMedicines();
     } catch (error: any) {
       toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Operation failed',
+        title: 'Operation Failed',
+        description: error.response?.data?.message || 'Failed to complete the operation. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -221,14 +223,15 @@ export default function MedicinesPage() {
     try {
       await medicinesApi.delete(id);
       toast({
-        title: 'Success',
-        description: 'Medicine deleted successfully',
+        title: 'Medicine Deleted',
+        description: 'Medicine has been successfully removed from the database.',
+        variant: 'success',
       });
       fetchMedicines();
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to delete medicine',
+        title: 'Deletion Failed',
+        description: 'Failed to delete medicine. Please try again.',
         variant: 'destructive',
       });
     }
@@ -268,9 +271,9 @@ export default function MedicinesPage() {
 
     if (validImages.length !== fileArray.length) {
       toast({
-        title: 'Warning',
-        description: 'Some files were not images and were skipped',
-        variant: 'destructive',
+        title: 'Invalid Files',
+        description: 'Some files were not images and were skipped.',
+        variant: 'warning',
       });
     }
 
@@ -1007,156 +1010,80 @@ export default function MedicinesPage() {
                         Browse
                       </Button>
                     </div>
-                    <p className="text-xs text-gray-500">Supported formats: JPG, PNG, GIF, WEBP, JFIF (Max 5MB each)</p>
                   </div>
-
-                  {/* Image Preview */}
+                  
+                  {/* Image Previews */}
                   {imagePreview.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {imagePreview.map((preview, index) => (
-                        <div key={index} className="relative group">
-                          <div className="aspect-square rounded-lg border-2 border-gray-200 overflow-hidden">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Preview</Label>
+                      <div className="flex gap-2 flex-wrap">
+                        {imagePreview.map((preview, index) => (
+                          <div key={index} className="relative group">
                             <img
                               src={preview}
                               alt={`Preview ${index + 1}`}
-                              className="w-full h-full object-cover"
+                              className="w-20 h-20 rounded-lg object-cover border"
                             />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute -top-2 -right-2 w-6 h-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => removeImage(index)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            className="absolute top-2 right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => removeImage(index)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {imagePreview.length === 0 && (
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                      <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                      <p className="text-sm text-gray-500">No images uploaded</p>
-                      <p className="text-xs text-gray-400 mt-1">Click Browse or drag images here</p>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-            
-            <DialogFooter className="mt-6 pt-4 border-t sticky bottom-0 bg-background">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setDialogOpen(false);
-                  resetForm();
-                }}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? (
-                  <>
-                    <span className="mr-2">Saving...</span>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  </>
-                ) : (
-                  editingMedicine ? 'Update Medicine' : 'Create Medicine'
-                )}
-              </Button>
-            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-
+      
       {/* Image Viewer Modal */}
-      <Dialog open={imageViewerOpen} onOpenChange={setImageViewerOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-0 bg-black border-gray-800">
-          <div className="relative w-full h-full flex items-center justify-center">
-            {/* Close button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute top-4 right-4 z-50 bg-black/50 text-white hover:bg-black/70 h-10 w-10 p-0"
+      {imageViewerOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+          <div className="relative w-full h-full max-w-4xl max-h-4xl flex items-center justify-center">
+            <button
               onClick={() => setImageViewerOpen(false)}
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all"
             >
-              <X className="h-5 w-5" />
-            </Button>
-
-            {/* Image counter */}
-            <div className="absolute top-4 left-4 z-50 bg-black/70 text-white px-3 py-1 rounded-md text-sm">
+              <X className="h-6 w-6" />
+            </button>
+            
+            <button
+              onClick={previousImage}
+              className="absolute left-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all"
+              disabled={viewerImages.length <= 1}
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            
+            <button
+              onClick={nextImage}
+              className="absolute right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all"
+              disabled={viewerImages.length <= 1}
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
+            
+            <img
+              src={viewerImages[currentImageIndex]}
+              alt={`Image ${currentImageIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+            />
+            
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black bg-opacity-50 rounded-full px-3 py-1 text-sm">
               {currentImageIndex + 1} / {viewerImages.length}
             </div>
-
-            {/* Previous button */}
-            {viewerImages.length > 1 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-50 bg-black/50 text-white hover:bg-black/70 h-12 w-12 p-0"
-                onClick={previousImage}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                </svg>
-              </Button>
-            )}
-
-            {/* Next button */}
-            {viewerImages.length > 1 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-50 bg-black/50 text-white hover:bg-black/70 h-12 w-12 p-0"
-                onClick={nextImage}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </Button>
-            )}
-
-            {/* Main Image */}
-            <div className="w-full h-[80vh] flex items-center justify-center p-8">
-              {viewerImages.length > 0 && (
-                <img
-                  src={viewerImages[currentImageIndex]}
-                  alt={`Medicine image ${currentImageIndex + 1}`}
-                  className="max-w-full max-h-full object-contain"
-                />
-              )}
-            </div>
-
-            {/* Thumbnail strip */}
-            {viewerImages.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex gap-2 bg-black/70 p-2 rounded-lg max-w-[90%] overflow-x-auto">
-                {viewerImages.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className={`w-16 h-16 rounded border-2 cursor-pointer transition-all ${
-                      idx === currentImageIndex
-                        ? 'border-blue-500 scale-110'
-                        : 'border-gray-500 hover:border-gray-300'
-                    }`}
-                    onClick={() => setCurrentImageIndex(idx)}
-                  >
-                    <img
-                      src={img}
-                      alt={`Thumbnail ${idx + 1}`}
-                      className="w-full h-full object-cover rounded"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 }

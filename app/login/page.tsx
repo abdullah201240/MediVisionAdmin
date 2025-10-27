@@ -23,13 +23,14 @@ export default function LoginPage() {
     try {
       await login(email, password);
       toast({
-        title: 'Success',
-        description: 'Logged in successfully',
+        title: 'Login Successful',
+        description: 'Welcome to the MediVision Admin Dashboard!',
+        variant: 'success',
       });
     } catch (error: any) {
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to login',
+        title: 'Login Failed',
+        description: error.message || 'Invalid email or password. Please try again.',
         variant: 'destructive',
       });
     } finally {

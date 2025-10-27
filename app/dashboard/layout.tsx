@@ -145,7 +145,7 @@ export default function DashboardLayout({
 
   // Determine page title based on current route
   const getPageTitle = () => {
-    if (pathname === '/profile') return 'Profile';
+    if (pathname === '/dashboard/profile') return 'Profile';
     if (pathname === '/dashboard') return 'Dashboard';
     if (pathname.startsWith('/dashboard/medicines')) return 'Medicines';
     if (pathname.startsWith('/dashboard/users')) return 'Users';
@@ -419,7 +419,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="p-4 sm:p-6">{children}</main>
+        <main className="p-0 sm:p-2">{children}</main>
       </div>
     </div>
   );

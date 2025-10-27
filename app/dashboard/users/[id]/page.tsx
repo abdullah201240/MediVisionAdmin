@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ToastDemo } from './toast-demo';
 import { 
   User, 
   Mail, 
@@ -20,11 +19,13 @@ import {
   X,
   Edit3,
   MapPin,
-  Briefcase
+  Briefcase,
+  Shield,
+  ShieldCheck
 } from 'lucide-react';
-import { authApi } from '@/lib/api';
+import { usersApi } from '@/lib/api';
 
-interface ProfileData {
+interface UserData {
   id: string;
   name: string;
   email: string;
@@ -36,15 +37,17 @@ interface ProfileData {
   role: string;
   location?: string;
   bio?: string;
+  createdAt: string;
 }
 
-export default function ProfilePage() {
-  const { user, checkAuth, removeCoverPhoto: removeCoverPhotoFromContext, removeProfileImage: removeProfileImageFromContext } = useAuth();
+export default function UserDetailsPage() {
+  const { user: currentUser } = useAuth();
   const router = useRouter();
+  const params = useParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [profileData, setProfileData] = useState<ProfileData>({
+  const [userData, setUserData] = useState<UserData>({
     id: '',
     name: '',
     email: '',
@@ -53,9 +56,10 @@ export default function ProfilePage() {
     dateOfBirth: '',
     image: '',
     coverPhoto: '',
-    role: '',
+    role: 'user',
     location: '',
     bio: '',
+    createdAt: '',
   });
   const [coverPhotoPreview, setCoverPhotoPreview] = useState<string | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
@@ -63,175 +67,78 @@ export default function ProfilePage() {
   const profileImageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!user) {
+    if (!currentUser) {
       router.push('/login');
       return;
     }
     
-    const userData: any = user;
+    // Only admins can view user details
+    if (currentUser.role !== 'admin') {
+      router.push('/dashboard');
+      return;
+    }
     
-    let formattedDob = '';
-    if (userData.dateOfBirth) {
-      try {
-        const date = new Date(userData.dateOfBirth);
-        if (!isNaN(date.getTime())) {
-          formattedDob = date.toISOString().split('T')[0];
+    fetchUserDetails();
+  }, [currentUser, router, params.id]);
+
+  const fetchUserDetails = async () => {
+    try {
+      const response = await usersApi.getById(params.id as string);
+      
+      let formattedDob = '';
+      if (response.dateOfBirth) {
+        try {
+          const date = new Date(response.dateOfBirth);
+          if (!isNaN(date.getTime())) {
+            formattedDob = date.toISOString().split('T')[0];
+          }
+        } catch (e) {
+          console.error('Error formatting date:', e);
         }
-      } catch (e) {
-        console.error('Error formatting date:', e);
       }
+      
+      const userData: any = {
+        id: response.id || '',
+        name: response.name || '',
+        email: response.email || '',
+        phone: response.phone || '',
+        gender: response.gender || '',
+        dateOfBirth: formattedDob,
+        image: response.image || '',
+        coverPhoto: response.coverPhoto || '',
+        role: response.role || 'user',
+        location: response.location || '',
+        bio: response.bio || '',
+        createdAt: response.createdAt || '',
+      };
+      
+      setUserData(userData);
+      
+      if (response.image) {
+        setProfileImagePreview(`http://localhost:3000/uploads/users/${response.image}`);
+      }
+      if (response.coverPhoto) {
+        setCoverPhotoPreview(`http://localhost:3000/uploads/users/${response.coverPhoto}`);
+      }
+    } catch (error: any) {
+      console.error('Error fetching user details:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to fetch user details',
+        variant: 'destructive',
+      });
+      router.push('/dashboard/users');
+    } finally {
+      setLoading(false);
     }
-    
-    setProfileData({
-      id: userData.id || '',
-      name: userData.name || '',
-      email: userData.email || '',
-      phone: userData.phone || '',
-      gender: userData.gender || '',
-      dateOfBirth: formattedDob,
-      image: userData.image || '',
-      coverPhoto: userData.coverPhoto || '',
-      role: userData.role || '',
-      location: userData.location || '',
-      bio: userData.bio || '',
-    });
-    
-    if (userData.image) {
-      setProfileImagePreview(`http://localhost:3000/uploads/users/${userData.image}`);
-    }
-    if (userData.coverPhoto) {
-      setCoverPhotoPreview(`http://localhost:3000/uploads/users/${userData.coverPhoto}`);
-    }
-    
-    setLoading(false);
-  }, [user, router]);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setProfileData(prev => ({
+    setUserData(prev => ({
       ...prev,
       [name]: value
     }));
-  };
-
-  const handleCoverPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: 'Invalid File Type',
-          description: 'Please select an image file',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: 'File Too Large',
-          description: 'File size must be less than 5MB',
-          variant: 'warning',
-        });
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCoverPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-      
-      uploadCoverPhoto(file);
-    }
-  };
-
-  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: 'Invalid File Type',
-          description: 'Please select an image file',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: 'File Too Large',
-          description: 'File size must be less than 5MB',
-          variant: 'warning',
-        });
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-      
-      uploadProfileImage(file);
-    }
-  };
-
-  const uploadCoverPhoto = async (file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append('coverPhoto', file);
-      
-      await authApi.updateProfileCover(formData);
-      await checkAuth();
-      
-      toast({
-        title: 'Cover Photo Updated',
-        description: 'Your cover photo has been updated successfully!',
-        variant: 'success',
-      });
-    } catch (error: any) {
-      console.error('Cover photo upload error:', error);
-      toast({
-        title: 'Upload Failed',
-        description: error.response?.data?.message || 'Failed to upload cover photo',
-        variant: 'destructive',
-      });
-      
-      if (profileData.coverPhoto) {
-        setCoverPhotoPreview(`http://localhost:3000/uploads/users/${profileData.coverPhoto}`);
-      } else {
-        setCoverPhotoPreview(null);
-      }
-    }
-  };
-
-  const uploadProfileImage = async (file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      await authApi.updateProfileImage(formData);
-      await checkAuth();
-      
-      toast({
-        title: 'Profile Image Updated',
-        description: 'Your profile image has been updated successfully!',
-        variant: 'success',
-      });
-    } catch (error: any) {
-      console.error('Profile image upload error:', error);
-      toast({
-        title: 'Upload Failed',
-        description: error.response?.data?.message || 'Failed to upload profile image',
-        variant: 'destructive',
-      });
-      
-      if (profileData.image) {
-        setProfileImagePreview(`http://localhost:3000/uploads/users/${profileData.image}`);
-      } else {
-        setProfileImagePreview(null);
-      }
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -240,33 +147,33 @@ export default function ProfilePage() {
 
     try {
       const updateData: any = {
-        name: profileData.name,
-        phone: profileData.phone,
-        gender: profileData.gender,
-        dateOfBirth: profileData.dateOfBirth,
-        location: profileData.location,
-        bio: profileData.bio,
+        name: userData.name,
+        phone: userData.phone,
+        gender: userData.gender,
+        dateOfBirth: userData.dateOfBirth,
+        location: userData.location,
+        bio: userData.bio,
       };
 
+      // Only include fields that have values
       Object.keys(updateData).forEach(key => {
         if (updateData[key] === '') {
           delete updateData[key];
         }
       });
 
-      await authApi.updateProfile(updateData);
-      await checkAuth();
+      await usersApi.update(userData.id, updateData);
       
       toast({
-        title: 'Profile Updated',
-        description: 'Your profile has been updated successfully!',
+        title: 'User Updated',
+        description: 'User information has been updated successfully!',
         variant: 'success',
       });
     } catch (error: any) {
       console.error('Update error:', error);
       toast({
         title: 'Update Failed',
-        description: error.response?.data?.message || 'Failed to update profile',
+        description: error.response?.data?.message || 'Failed to update user',
         variant: 'destructive',
       });
     } finally {
@@ -274,45 +181,21 @@ export default function ProfilePage() {
     }
   };
 
-  const triggerCoverPhotoUpload = () => {
-    coverPhotoInputRef.current?.click();
-  };
-
-  const triggerProfileImageUpload = () => {
-    profileImageInputRef.current?.click();
-  };
-
-  const removeCoverPhoto = async () => {
+  const handleRoleChange = async (newRole: string) => {
     try {
-      await removeCoverPhotoFromContext();
-      setCoverPhotoPreview(null);
+      await usersApi.updateRole(userData.id, newRole);
+      setUserData(prev => ({ ...prev, role: newRole }));
+      
       toast({
-        title: 'Cover Photo Removed',
-        description: 'Your cover photo has been removed successfully!',
+        title: 'Role Updated',
+        description: `User role has been changed to ${newRole}!`,
         variant: 'success',
       });
     } catch (error: any) {
+      console.error('Role update error:', error);
       toast({
-        title: 'Removal Failed',
-        description: error.response?.data?.message || 'Failed to remove cover photo',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const removeProfileImage = async () => {
-    try {
-      await removeProfileImageFromContext();
-      setProfileImagePreview(null);
-      toast({
-        title: 'Profile Image Removed',
-        description: 'Your profile image has been removed successfully!',
-        variant: 'success',
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Removal Failed',
-        description: error.response?.data?.message || 'Failed to remove profile image',
+        title: 'Role Update Failed',
+        description: error.response?.data?.message || 'Failed to update user role',
         variant: 'destructive',
       });
     }
@@ -342,36 +225,10 @@ export default function ProfilePage() {
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
               <div className="text-center text-gray-500">
                 <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p className="text-lg font-medium">Add a cover photo</p>
+                <p className="text-lg font-medium">No cover photo</p>
               </div>
             </div>
           )}
-          
-          {/* Cover Photo Overlay and Actions */}
-          <div className="absolute inset-0 bg-black/20 hover:bg-black/30 transition-all duration-300">
-            <div className="absolute bottom-4 right-4 flex gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="flex items-center gap-2 bg-white/95 hover:bg-white backdrop-blur-sm shadow-lg border-0"
-                onClick={triggerCoverPhotoUpload}
-              >
-                <Camera className="h-4 w-4" />
-                {coverPhotoPreview ? 'Change Cover' : 'Add Cover'}
-              </Button>
-              
-              {coverPhotoPreview && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="bg-red-500/95 hover:bg-red-600 backdrop-blur-sm shadow-lg border-0"
-                  onClick={removeCoverPhoto}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
         </div>
         
         {/* Profile Header Section */}
@@ -393,28 +250,6 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </div>
-                
-                {/* Profile Image Upload Button */}
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="absolute bottom-2 right-2 rounded-xl w-10 h-10 p-0 bg-blue-600 hover:bg-blue-700 text-white shadow-lg border-2 border-white transition-all duration-200 hover:scale-105"
-                  onClick={triggerProfileImageUpload}
-                >
-                  <Camera className="h-5 w-5" />
-                </Button>
-                
-                {/* Profile Image Remove Button */}
-                {profileImagePreview && (
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 rounded-xl w-10 h-10 p-0 bg-red-500 hover:bg-red-600 text-white shadow-lg border-2 border-white transition-all duration-200 hover:scale-105"
-                    onClick={removeProfileImage}
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
-                )}
               </div>
             </div>
             
@@ -424,76 +259,81 @@ export default function ProfilePage() {
                 <div className="space-y-3 flex-1">
                   <div>
                     <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 truncate">
-                      {profileData.name}
+                      {userData.name}
                     </h1>
-                    <p className="text-xl text-muted-foreground capitalize mt-1 font-semibold">
-                      {profileData.role}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-xl text-muted-foreground capitalize font-semibold">
+                        {userData.role}
+                      </p>
+                      {userData.role === 'admin' ? (
+                        <ShieldCheck className="h-5 w-5 text-purple-600" />
+                      ) : (
+                        <Shield className="h-5 w-5 text-gray-400" />
+                      )}
+                    </div>
                   </div>
                   
                   {/* Additional Profile Info */}
                   <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                    {profileData.location && (
+                    <div className="flex items-center gap-1">
+                      <Mail className="h-4 w-4" />
+                      <span>{userData.email}</span>
+                    </div>
+                    {userData.location && (
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
-                        <span>{profileData.location}</span>
+                        <span>{userData.location}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-1">
                       <Briefcase className="h-4 w-4" />
-                      <span>Member since {new Date().getFullYear()}</span>
+                      <span>Member since {new Date(userData.createdAt).getFullYear()}</span>
                     </div>
                   </div>
                   
                   {/* Bio */}
-                  {profileData.bio && (
+                  {userData.bio && (
                     <p className="text-gray-600 max-w-2xl leading-relaxed">
-                      {profileData.bio}
+                      {userData.bio}
                     </p>
                   )}
                 </div>
                 
-                <Button 
-                  onClick={() => document.getElementById('profile-form')?.scrollIntoView({ behavior: 'smooth' })} 
-                  className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg h-12 px-6 whitespace-nowrap text-white"
-                >
-                  <Edit3 className="h-5 w-5" />
-                  Edit Profile
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Role:</span>
+                    <select
+                      value={userData.role}
+                      onChange={(e) => handleRoleChange(e.target.value)}
+                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <Button 
+                    onClick={() => document.getElementById('user-form')?.scrollIntoView({ behavior: 'smooth' })} 
+                    className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg h-10 px-4 whitespace-nowrap text-white"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                    Edit User
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
       
-    
-      
-      {/* Profile Form */}
-      <div id="profile-form">
+      {/* User Form */}
+      <div id="user-form">
         <Card className="rounded-2xl border-none shadow-none bg-white">
           <CardHeader className="pb-2 sm:pb-4">
-            <CardTitle className="text-2xl font-bold">Profile Information</CardTitle>
-            <p className="text-muted-foreground">Update your personal information and preferences</p>
+            <CardTitle className="text-2xl font-bold">User Information</CardTitle>
+            <p className="text-muted-foreground">Update user information and preferences</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Hidden file inputs */}
-              <input
-                type="file"
-                ref={coverPhotoInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={handleCoverPhotoChange}
-              />
-              
-              <input
-                type="file"
-                ref={profileImageInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={handleProfileImageChange}
-              />
-              
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Name */}
                 <div className="space-y-2">
@@ -503,9 +343,9 @@ export default function ProfilePage() {
                     <Input
                       id="name"
                       name="name"
-                      value={profileData.name}
+                      value={userData.name}
                       onChange={handleInputChange}
-                      placeholder="Enter your full name"
+                      placeholder="Enter full name"
                       className="h-12 pl-10 border border-gray-200 bg-white focus:bg-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -519,9 +359,9 @@ export default function ProfilePage() {
                     <Input
                       id="email"
                       name="email"
-                      value={profileData.email}
+                      value={userData.email}
                       onChange={handleInputChange}
-                      placeholder="Enter your email"
+                      placeholder="Enter email"
                       className="h-12 pl-10 border border-gray-200 bg-gray-50 rounded-xl"
                       readOnly
                     />
@@ -539,9 +379,9 @@ export default function ProfilePage() {
                     <Input
                       id="phone"
                       name="phone"
-                      value={profileData.phone || ''}
+                      value={userData.phone || ''}
                       onChange={handleInputChange}
-                      placeholder="Enter your phone number"
+                      placeholder="Enter phone number"
                       className="h-12 pl-10 border border-gray-200 bg-white focus:bg-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -555,9 +395,9 @@ export default function ProfilePage() {
                     <Input
                       id="location"
                       name="location"
-                      value={profileData.location || ''}
+                      value={userData.location || ''}
                       onChange={handleInputChange}
-                      placeholder="Enter your location"
+                      placeholder="Enter location"
                       className="h-12 pl-10 border border-gray-200 bg-white focus:bg-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -569,7 +409,7 @@ export default function ProfilePage() {
                   <select
                     id="gender"
                     name="gender"
-                    value={profileData.gender || ''}
+                    value={userData.gender || ''}
                     onChange={handleInputChange}
                     className="w-full h-12 px-3 py-2 border border-gray-200 rounded-xl bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
@@ -590,7 +430,7 @@ export default function ProfilePage() {
                       id="dateOfBirth"
                       name="dateOfBirth"
                       type="date"
-                      value={profileData.dateOfBirth || ''}
+                      value={userData.dateOfBirth || ''}
                       onChange={handleInputChange}
                       className="h-12 pl-10 border border-gray-200 bg-white focus:bg-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
@@ -604,27 +444,47 @@ export default function ProfilePage() {
                 <textarea
                   id="bio"
                   name="bio"
-                  value={profileData.bio || ''}
+                  value={userData.bio || ''}
                   onChange={handleInputChange}
-                  placeholder="Tell us a little about yourself..."
+                  placeholder="Tell us a little about this user..."
                   rows={4}
                   className="w-full px-3 py-3 border border-gray-200 rounded-xl bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 />
               </div>
 
-              {/* Role (Read-only) */}
+              {/* Role (Read-only in form, editable via dropdown) */}
               <div className="space-y-2">
                 <Label htmlFor="role" className="text-sm font-medium">Role</Label>
-                <Input
-                  id="role"
-                  name="role"
-                  value={profileData.role}
-                  onChange={handleInputChange}
-                  className="h-12 border border-gray-200 bg-gray-50 rounded-xl"
-                  readOnly
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="role"
+                    name="role"
+                    value={userData.role}
+                    onChange={handleInputChange}
+                    className="h-12 border border-gray-200 bg-gray-50 rounded-xl"
+                    readOnly
+                  />
+                  <Button
+                    type="button"
+                    variant={userData.role === 'admin' ? 'default' : 'outline'}
+                    onClick={() => handleRoleChange(userData.role === 'admin' ? 'user' : 'admin')}
+                    className="flex items-center gap-2"
+                  >
+                    {userData.role === 'admin' ? (
+                      <>
+                        <ShieldCheck className="h-4 w-4" />
+                        Demote to User
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="h-4 w-4" />
+                        Promote to Admin
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Role is assigned by system administrators
+                  Role can be changed using the dropdown above or the promote/demote button
                 </p>
               </div>
 
@@ -650,10 +510,10 @@ export default function ProfilePage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push('/dashboard')}
+                  onClick={() => router.push('/dashboard/users')}
                   className="min-w-[140px] h-12 border border-gray-200 bg-white hover:bg-gray-50"
                 >
-                  Cancel
+                  Back to Users
                 </Button>
               </div>
             </form>

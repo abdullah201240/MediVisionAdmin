@@ -102,21 +102,21 @@ export default function DashboardPage() {
 
   const statCards = [
     {
-      title: 'Total Medicines',
+      title: 'Medicines',
       value: stats.totalMedicines,
       icon: Pill,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
     },
     {
-      title: 'Total Users',
+      title: 'Users',
       value: stats.totalUsers,
       icon: Users,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
     },
     {
-      title: 'Active Users',
+      title: 'Active',
       value: stats.activeUsers,
       icon: Activity,
       color: 'text-purple-600',
@@ -131,6 +131,25 @@ export default function DashboardPage() {
     },
   ];
 
+  const quickActions = [
+    {
+      title: 'Manage Medicines',
+      description: 'View and edit medicine database',
+      icon: Pill,
+      iconColor: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+      path: '/dashboard/medicines'
+    },
+    {
+      title: 'Manage Users',
+      description: 'View and manage user accounts',
+      icon: Users,
+      iconColor: 'text-green-600',
+      bgColor: 'bg-green-100',
+      path: '/dashboard/users'
+    }
+  ];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -140,209 +159,213 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground mt-2">
-            Welcome to your admin dashboard. Here's what's happening today.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
+    <div className="space-y-6">
+      
 
-      {/* Image Search Section */}
-      <Card className="border-2 border-blue-300 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 shadow-lg">
-        <CardHeader className="pb-4">
-          <div className="text-center space-y-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-2">
-              <Camera className="h-8 w-8 text-white" />
-            </div>
-            <div>
-              <CardTitle className="text-2xl font-bold text-gray-900">
-                🔍 Search Medicine by Image
-              </CardTitle>
-              <p className="text-base text-gray-700 mt-3 max-w-2xl mx-auto">
-                Upload a clear photo of medicine packaging to instantly find matching medicines in our database
-              </p>
-            </div>
-            <div className="pt-2">
-              <Button
-                size="lg"
-                onClick={() => setImageSearchOpen(true)}
-                className="h-14 px-8 text-lg font-semibold bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-              >
-                <Search className="h-6 w-6 mr-2" />
-                Click Here to Search by Image
-              </Button>
-            </div>
-            <div className="flex items-center justify-center gap-8 text-sm text-gray-600 pt-2">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Fast & Accurate</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>Easy to Use</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <span>Instant Results</span>
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        
-        {/* Search Results */}
-        {searchResults.length > 0 && (
-          <CardContent className="pt-0">
-            <div className="border-t-2 border-blue-200 pt-6">
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <div className="w-1.5 h-6 bg-blue-600 rounded"></div>
-                  Search Results: {searchResults.length} medicine(s) found
-                </h3>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {searchResults.map((medicine) => (
-                    <div
-                      key={medicine.id}
-                      className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-blue-500 hover:shadow-xl transition-all cursor-pointer group"
-                      onClick={() => handleViewMedicine(medicine)}
-                    >
-                      <div className="space-y-3">
-                        {medicine.images && medicine.images.length > 0 ? (
-                          <div className="relative overflow-hidden rounded-lg">
-                            <img
-                              src={`http://localhost:3000/uploads/medicines/${medicine.images[0]}`}
-                              alt={medicine.name}
-                              className="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300"
-                            />
-                            <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                              Match
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="w-full h-40 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
-                            <Pill className="h-16 w-16 text-gray-400" />
-                          </div>
-                        )}
-                        <div>
-                          <h4 className="font-bold text-gray-900 text-lg line-clamp-1">{medicine.name}</h4>
-                          {medicine.nameBn && (
-                            <p className="text-sm text-gray-600 line-clamp-1">{medicine.nameBn}</p>
-                          )}
-                          <p className="text-sm text-blue-600 font-medium mt-1">{medicine.brand || 'No brand'}</p>
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-colors"
-                            >
-                              View Full Details <ArrowRight className="h-4 w-4 ml-1" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {/* Stats Grid - More compact */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
-          <Card key={stat.title} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
+          <Card key={stat.title} className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
               <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
+              <CardTitle className="text-sm font-medium text-muted-foreground text-right">
+                {stat.title}
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stat.value}</div>
+            <CardContent className="p-4 pt-0">
+              <div className="text-2xl font-bold text-right">{stat.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Recent Activity */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div 
-              className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
-              onClick={() => router.push('/dashboard/medicines')}
-            >
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Pill className="h-5 w-5 text-blue-600" />
+      {/* Main Content Grid */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Image Search Section - Full width on mobile, spans 2 columns on large screens */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Image Search Card */}
+          <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+            <CardHeader className="pb-4">
+              <div className="text-center space-y-3">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-full">
+                  <Camera className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold text-gray-900">
+                    Search Medicine by Image
+                  </CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Upload a photo to find matching medicines
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setImageSearchOpen(true)}
+                  className="h-10 px-4 bg-blue-600 hover:bg-blue-700"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Search by Image
+                </Button>
               </div>
-              <div>
-                <p className="font-medium">Manage Medicines</p>
-                <p className="text-sm text-muted-foreground">
-                  View, add, and edit medicine database
-                </p>
-              </div>
-            </div>
-            <div 
-              className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
-              onClick={() => router.push('/dashboard/users')}
-            >
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Users className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="font-medium">Manage Users</p>
-                <p className="text-sm text-muted-foreground">
-                  View and manage user accounts
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardHeader>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>System Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-green-50">
-              <span className="text-sm font-medium">Database</span>
-              <span className="text-xs text-green-600 font-semibold">
-                Connected
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-green-50">
-              <span className="text-sm font-medium">API Server</span>
-              <span className="text-xs text-green-600 font-semibold">
-                Online
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50">
-              <span className="text-sm font-medium">Last Backup</span>
-              <span className="text-xs text-blue-600 font-semibold">
-                2 hours ago
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Search Results */}
+          {searchResults.length > 0 && (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <div className="w-1 h-5 bg-blue-600 rounded"></div>
+                  Results ({searchResults.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {searchResults.slice(0, 3).map((medicine) => (
+                    <div
+                      key={medicine.id}
+                      className="border rounded-lg p-3 hover:border-blue-500 hover:shadow-sm transition-all cursor-pointer"
+                      onClick={() => handleViewMedicine(medicine)}
+                    >
+                      <div className="space-y-2">
+                        {medicine.images && medicine.images.length > 0 ? (
+                          <div className="relative overflow-hidden rounded">
+                            <img
+                              src={`http://localhost:3000/uploads/medicines/${medicine.images[0]}`}
+                              alt={medicine.name}
+                              className="w-full h-24 object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-full h-24 bg-gray-100 rounded flex items-center justify-center">
+                            <Pill className="h-8 w-8 text-gray-400" />
+                          </div>
+                        )}
+                        <div>
+                          <h4 className="font-medium text-gray-900 text-sm line-clamp-1">{medicine.name}</h4>
+                          <p className="text-xs text-blue-600 font-medium">{medicine.brand || 'No brand'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {searchResults.length > 3 && (
+                    <div 
+                      className="border rounded-lg p-3 flex items-center justify-center hover:border-blue-500 hover:shadow-sm transition-all cursor-pointer"
+                      onClick={() => router.push('/dashboard/medicines')}
+                    >
+                      <div className="text-center">
+                        <div className="text-blue-600 font-medium text-sm">
+                          +{searchResults.length - 3} more
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          View all results
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-bold text-gray-900">Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {quickActions.map((action, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                  onClick={() => router.push(action.path)}
+                >
+                  <div className={`p-2 rounded-lg ${action.bgColor}`}>
+                    <action.icon className={`h-5 w-5 ${action.iconColor}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">{action.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {action.description}
+                    </p>
+                  </div>
+                  <div className="ml-auto">
+                    <ArrowRight className="h-4 w-4 text-gray-400" />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar Content - Spans 1 column on large screens */}
+        <div className="space-y-6">
+          {/* System Status */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-bold text-gray-900">System Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between p-2 rounded bg-green-50">
+                <span className="text-sm font-medium">Database</span>
+                <span className="text-xs text-green-600 font-semibold">
+                  Connected
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded bg-green-50">
+                <span className="text-sm font-medium">API Server</span>
+                <span className="text-xs text-green-600 font-semibold">
+                  Online
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded bg-blue-50">
+                <span className="text-sm font-medium">Last Backup</span>
+                <span className="text-xs text-blue-600 font-semibold">
+                  2 hours ago
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-bold text-gray-900">Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 p-1 bg-blue-100 rounded-full">
+                    <Pill className="h-3 w-3 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">New medicine added</p>
+                    <p className="text-xs text-muted-foreground">2 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 p-1 bg-green-100 rounded-full">
+                    <Users className="h-3 w-3 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">User registered</p>
+                    <p className="text-xs text-muted-foreground">5 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 p-1 bg-purple-100 rounded-full">
+                    <Activity className="h-3 w-3 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Inventory updated</p>
+                    <p className="text-xs text-muted-foreground">1 day ago</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
       
       {/* Medicine Details Modal */}

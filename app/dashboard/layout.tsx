@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/context/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { 
@@ -12,14 +12,20 @@ import {
   LogOut,
   Menu,
   X,
-  User
+  User,
+  Search,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
-import { useState } from 'react';
 
-const navItems = [
+// Define navigation items
+const mainNavItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Medicines', href: '/dashboard/medicines', icon: Pill },
   { name: 'Users', href: '/dashboard/users', icon: Users },
+];
+
+const userNavItems = [
   { name: 'Profile', href: '/profile', icon: User },
 ];
 
@@ -32,12 +38,34 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
   }, [user, loading, router]);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const userMenu = document.getElementById('user-menu');
+      const userButton = document.getElementById('user-button');
+      
+      if (userMenu && userButton && 
+          !userMenu.contains(target) && 
+          !userButton.contains(target)) {
+        setUserMenuOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -51,43 +79,78 @@ export default function DashboardLayout({
     return null;
   }
 
+  // Determine page title based on current route
+  const getPageTitle = () => {
+    if (pathname === '/profile') return 'Profile';
+    if (pathname === '/dashboard') return 'Dashboard';
+    if (pathname.startsWith('/dashboard/medicines')) return 'Medicines';
+    if (pathname.startsWith('/dashboard/users')) return 'Users';
+    return 'Admin Dashboard';
+  };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar with Apple-style glass effect */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r transition-transform lg:translate-x-0",
+          "fixed top-0 left-0 z-50 h-screen bg-white/80 backdrop-blur-xl border-r border-white/20 shadow-xl transition-all duration-300 ease-in-out lg:translate-x-0",
+          sidebarCollapsed ? "w-20" : "w-48",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-6 border-b">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-600 rounded-lg">
-                <Pill className="h-5 w-5 text-white" />
+          {/* Logo and Collapse Button */}
+          <div className="flex items-center justify-between h-16 px-4 border-b border-white/20">
+            {!sidebarCollapsed ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-600 rounded-lg">
+                    <Pill className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    MediVision
+                  </span>
+                </div>
+                <button
+                  className="text-gray-500 hover:text-gray-700"
+                  onClick={toggleSidebar}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              </>
+            ) : (
+              <div className="w-full flex justify-center">
+                <button
+                  className="text-gray-500 hover:text-gray-700"
+                  onClick={toggleSidebar}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
               </div>
-              <span className="font-bold text-lg">MediVision</span>
-            </div>
+            )}
             <button
-              className="lg:hidden"
+              className="lg:hidden text-gray-500 hover:text-gray-700"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1">
-            {navItems.map((item) => {
+          {/* Main Navigation */}
+          <nav className="flex-1 px-3 py-4 space-y-1">
+            {mainNavItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <button
@@ -97,73 +160,142 @@ export default function DashboardLayout({
                     setSidebarOpen(false);
                   }}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
+                    sidebarCollapsed ? "justify-center px-2" : "",
                     isActive
-                      ? "bg-blue-50 text-blue-600"
-                      : "text-gray-700 hover:bg-gray-50"
+                      ? "bg-blue-500/10 text-blue-600 shadow-sm"
+                      : "text-gray-700 hover:bg-white/50"
                   )}
                 >
                   <item.icon className="h-5 w-5" />
-                  {item.name}
+                  {!sidebarCollapsed && <span>{item.name}</span>}
                 </button>
               );
             })}
           </nav>
 
-          {/* User section */}
-          <div className="p-4 border-t">
-            <div className="flex items-center gap-3 px-3 py-2 mb-2">
-              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <span className="text-blue-600 font-semibold text-sm">
-                  {user.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user.name}
-                </p>
-                <p className="text-xs text-gray-500 truncate">{user.email}</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start gap-3"
-                onClick={() => router.push('/profile')}
-              >
-                <User className="h-4 w-4" />
-                Profile
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start gap-3"
+          {/* User Section - Always visible in sidebar */}
+          <div className="px-3 py-4 border-t border-white/20">
+            <div className="space-y-1">
+              {userNavItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <button
+                    key={item.href}
+                    onClick={() => {
+                      router.push(item.href);
+                      setSidebarOpen(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
+                      sidebarCollapsed ? "justify-center px-2" : "",
+                      isActive
+                        ? "bg-blue-500/10 text-blue-600 shadow-sm"
+                        : "text-gray-700 hover:bg-white/50"
+                    )}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {!sidebarCollapsed && <span>{item.name}</span>}
+                  </button>
+                );
+              })}
+              {/* Logout button always in sidebar */}
+              <button
                 onClick={logout}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-gray-700 hover:bg-white/50",
+                  sidebarCollapsed ? "justify-center px-2" : ""
+                )}
               >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
+                <LogOut className="h-5 w-5" />
+                {!sidebarCollapsed && <span>Logout</span>}
+              </button>
             </div>
           </div>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 h-16 bg-white border-b flex items-center px-6">
-          <button
-            className="lg:hidden mr-4"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <h1 className="text-xl font-semibold text-gray-900">
-            Admin Dashboard
-          </h1>
+      <div className={cn("transition-all duration-300", sidebarCollapsed ? "lg:pl-20" : "lg:pl-48")}>
+        {/* Top bar with Apple-style glass effect */}
+        <header className="sticky top-0 z-40 h-16 bg-white/80 backdrop-blur-xl border-b border-white/20 shadow-sm">
+          <div className="flex items-center h-full px-4 sm:px-6">
+            <button
+              className="lg:hidden mr-3 text-gray-500 hover:text-gray-700"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900">
+              {getPageTitle()}
+            </h1>
+            
+            {/* Spacer */}
+            <div className="flex-1"></div>
+            
+            {/* Search and user info */}
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center bg-white/50 rounded-lg px-3 py-2 border border-white/30">
+                <Search className="h-4 w-4 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="ml-2 bg-transparent border-none focus:outline-none text-sm w-32 placeholder-gray-500"
+                />
+              </div>
+              
+              <div className="flex items-center gap-3 relative">
+                <div className="hidden sm:flex flex-col items-end">
+                  <span className="text-sm font-medium text-gray-900">
+                    {user.name}
+                  </span>
+                  <span className="text-xs text-gray-500 capitalize">
+                    {user.role}
+                  </span>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">
+                    {user.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                
+                {/* User menu dropdown */}
+                <div className="relative">
+                  <button 
+                    id="user-button"
+                    className="text-gray-500 hover:text-gray-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setUserMenuOpen(!userMenuOpen);
+                    }}
+                  >
+                    <Menu className="h-5 w-5" />
+                  </button>
+                  {userMenuOpen && (
+                    <div 
+                      id="user-menu"
+                      className="absolute right-0 mt-2 w-48 bg-white/90 backdrop-blur-xl rounded-lg shadow-lg border border-white/30 py-1 z-50"
+                    >
+                      <button
+                        onClick={() => {
+                          logout();
+                          setUserMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-white/50 flex items-center gap-2"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </header>
 
         {/* Page content */}
-        <main className="p-6">{children}</main>
+        <main className="p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );

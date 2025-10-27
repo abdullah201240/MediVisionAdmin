@@ -123,7 +123,7 @@ export default function DashboardLayoutWrapper({
       <aside
         className={cn(
           "fixed top-0 left-0 z-50 h-screen bg-white/80 backdrop-blur-xl border-r border-white/20 shadow-xl transition-all duration-300 ease-in-out lg:translate-x-0",
-          sidebarCollapsed ? "w-20" : "w-64",
+          sidebarCollapsed ? "w-20" : "w-56",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -233,7 +233,7 @@ export default function DashboardLayoutWrapper({
       </aside>
 
       {/* Main content */}
-      <div className={cn("transition-all duration-300", sidebarCollapsed ? "lg:pl-20" : "lg:pl-64")}>
+      <div className={cn("transition-all duration-300", sidebarCollapsed ? "lg:pl-20" : "lg:pl-56")}>
         {/* Top bar with glass effect */}
         <header className="sticky top-0 z-40 h-16 bg-white/80 backdrop-blur-xl border-b border-white/20 shadow-sm">
           <div className="flex items-center h-full px-4 sm:px-6">

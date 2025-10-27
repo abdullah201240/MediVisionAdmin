@@ -27,7 +27,7 @@ const mainNavItems = [
 ];
 
 const userNavItems = [
-  { name: 'Profile', href: '/profile', icon: User },
+  { name: 'Profile', href: '/dashboard/profile', icon: User },
 ];
 
 export default function DashboardLayout({

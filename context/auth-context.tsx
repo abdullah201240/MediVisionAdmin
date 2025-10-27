@@ -18,6 +18,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  removeCoverPhoto: () => Promise<void>;
+  removeProfileImage: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,8 +72,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const removeCoverPhoto = async () => {
+    try {
+      await authApi.removeCoverPhoto();
+      // Refresh user data
+      await checkAuth();
+    } catch (error) {
+      console.error('Remove cover photo error:', error);
+      throw error;
+    }
+  };
+
+  const removeProfileImage = async () => {
+    try {
+      await authApi.removeProfileImage();
+      // Refresh user data
+      await checkAuth();
+    } catch (error) {
+      console.error('Remove profile image error:', error);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth, removeCoverPhoto, removeProfileImage }}>
       {children}
     </AuthContext.Provider>
   );

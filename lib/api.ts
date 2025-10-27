@@ -28,6 +28,30 @@ export const authApi = {
     const response = await api.put('/users/profile', data);
     return response.data;
   },
+  updateProfileImage: async (formData: FormData) => {
+    const response = await api.put('/users/profile/image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+  removeProfileImage: async () => {
+    const response = await api.delete('/users/profile/image');
+    return response.data;
+  },
+  updateProfileCover: async (formData: FormData) => {
+    const response = await api.put('/users/profile/cover', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+  removeCoverPhoto: async () => {
+    const response = await api.delete('/users/profile/cover');
+    return response.data;
+  },
 };
 
 // Users API

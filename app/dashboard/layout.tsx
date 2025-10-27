@@ -11,7 +11,8 @@ import {
   Users, 
   LogOut,
   Menu,
-  X
+  X,
+  User
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -19,6 +20,7 @@ const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Medicines', href: '/dashboard/medicines', icon: Pill },
   { name: 'Users', href: '/dashboard/users', icon: Users },
+  { name: 'Profile', href: '/profile', icon: User },
 ];
 
 export default function DashboardLayout({
@@ -123,14 +125,24 @@ export default function DashboardLayout({
                 <p className="text-xs text-gray-500 truncate">{user.email}</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-3"
-              onClick={logout}
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3"
+                onClick={() => router.push('/profile')}
+              >
+                <User className="h-4 w-4" />
+                Profile
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3"
+                onClick={logout}
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </aside>

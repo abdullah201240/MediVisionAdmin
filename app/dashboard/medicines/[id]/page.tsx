@@ -1,16 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, 
   Pill, 
   Calendar, 
   MapPin, 
-  Package, 
   FileText,
   ImageIcon,
   ChevronLeft,
@@ -19,51 +18,77 @@ import {
 } from 'lucide-react';
 import { medicinesApi } from '@/lib/api';
 
+interface Medicine {
+  id: string;
+  name: string;
+  nameBn?: string;
+  brand?: string;
+  brandBn?: string;
+  details: string;
+  detailsBn?: string;
+  origin?: string;
+  originBn?: string;
+  sideEffects?: string;
+  sideEffectsBn?: string;
+  usage?: string;
+  usageBn?: string;
+  howToUse?: string;
+  howToUseBn?: string;
+  images?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function MedicineDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const medicineId = params.id as string;
   
-  const [medicine, setMedicine] = useState<any>(null);
+  const [medicine, setMedicine] = useState<Medicine | null>(null);
   const [loading, setLoading] = useState(true);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  useEffect(() => {
-    const fetchMedicine = async () => {
-      try {
-        const data = await medicinesApi.getById(medicineId);
-        setMedicine(data);
-      } catch (error) {
-        console.error('Error fetching medicine:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (medicineId) {
-      fetchMedicine();
+  const fetchMedicine = useCallback(async () => {
+    if (!medicineId) return;
+    
+    try {
+      const data = await medicinesApi.getById(medicineId);
+      setMedicine(data);
+    } catch (error) {
+      console.error('Error fetching medicine:', error);
+      // Handle error state if needed
+    } finally {
+      setLoading(false);
     }
   }, [medicineId]);
 
-  const openImageViewer = (index: number) => {
+  useEffect(() => {
+    fetchMedicine();
+  }, [fetchMedicine]);
+
+  const openImageViewer = useCallback((index: number) => {
     setCurrentImageIndex(index);
     setImageViewerOpen(true);
-  };
+  }, []);
 
-  const nextImage = () => {
-    if (medicine?.images) {
-      setCurrentImageIndex((prev) => (prev + 1) % medicine.images.length);
+  const nextImage = useCallback(() => {
+    if (medicine?.images && medicine.images.length > 0) {
+      setCurrentImageIndex((prev) => (prev + 1) % medicine.images!.length);
     }
-  };
+  }, [medicine?.images]);
 
-  const previousImage = () => {
-    if (medicine?.images) {
+  const previousImage = useCallback(() => {
+    if (medicine?.images && medicine.images.length > 0) {
       setCurrentImageIndex((prev) => 
-        prev === 0 ? medicine.images.length - 1 : prev - 1
+        prev === 0 ? medicine.images!.length - 1 : prev - 1
       );
     }
-  };
+  }, [medicine?.images]);
+
+  const closeImageViewer = useCallback(() => {
+    setImageViewerOpen(false);
+  }, []);
 
   useEffect(() => {
     if (!imageViewerOpen) return;
@@ -74,15 +99,15 @@ export default function MedicineDetailsPage() {
       } else if (e.key === 'ArrowRight') {
         nextImage();
       } else if (e.key === 'Escape') {
-        setImageViewerOpen(false);
+        closeImageViewer();
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [imageViewerOpen, medicine?.images]);
+  }, [imageViewerOpen, nextImage, previousImage, closeImageViewer]);
 
-  const formatDate = (dateString: string): string => {
+  const formatDate = useCallback((dateString: string): string => {
     if (!dateString) return '-';
     try {
       const date = new Date(dateString);
@@ -95,9 +120,10 @@ export default function MedicineDetailsPage() {
         minute: '2-digit'
       });
     } catch (error) {
+      console.debug('Error formatting date:', error);
       return '-';
     }
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -163,9 +189,11 @@ export default function MedicineDetailsPage() {
                       className="relative group cursor-pointer rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-500 transition-all"
                       onClick={() => openImageViewer(index)}
                     >
-                      <img
+                      <Image
                         src={`http://localhost:3000/uploads/medicines/${image}`}
                         alt={`${medicine.name} - Image ${index + 1}`}
+                        width={200}
+                        height={128}
                         className="w-full h-32 object-cover group-hover:scale-110 transition-transform"
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
@@ -228,16 +256,6 @@ export default function MedicineDetailsPage() {
                   </div>
                 )}
 
-                {/* Type */}
-                <div>
-                  <label className="text-sm font-semibold text-gray-600">Type</label>
-                  <div className="mt-1">
-                    <Badge variant="secondary" className="text-sm px-3 py-1">
-                      {medicine.type || 'Not specified'}
-                    </Badge>
-                  </div>
-                </div>
-
                 {/* Origin */}
                 <div>
                   <label className="text-sm font-semibold text-gray-600 flex items-center gap-1">
@@ -245,15 +263,6 @@ export default function MedicineDetailsPage() {
                     Origin
                   </label>
                   <p className="text-lg font-medium text-gray-900 mt-1">{medicine.origin || '-'}</p>
-                </div>
-
-                {/* Dosage */}
-                <div>
-                  <label className="text-sm font-semibold text-gray-600 flex items-center gap-1">
-                    <Package className="h-4 w-4" />
-                    Dosage
-                  </label>
-                  <p className="text-lg font-medium text-gray-900 mt-1">{medicine.dosage || '-'}</p>
                 </div>
 
                 {/* Created Date */}
@@ -309,8 +318,9 @@ export default function MedicineDetailsPage() {
       {imageViewerOpen && medicine.images && medicine.images.length > 0 && (
         <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center">
           <button
-            onClick={() => setImageViewerOpen(false)}
+            onClick={closeImageViewer}
             className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full p-2 transition-colors z-10"
+            aria-label="Close image viewer"
           >
             <X className="h-8 w-8" />
           </button>
@@ -319,14 +329,17 @@ export default function MedicineDetailsPage() {
             onClick={previousImage}
             className="absolute left-4 text-white hover:bg-white/20 rounded-full p-3 transition-colors"
             disabled={medicine.images.length <= 1}
+            aria-label="Previous image"
           >
             <ChevronLeft className="h-10 w-10" />
           </button>
 
           <div className="max-w-5xl max-h-[90vh] flex flex-col items-center">
-            <img
+            <Image
               src={`http://localhost:3000/uploads/medicines/${medicine.images[currentImageIndex]}`}
               alt={`${medicine.name} - Image ${currentImageIndex + 1}`}
+              width={800}
+              height={600}
               className="max-h-[80vh] object-contain"
             />
             <div className="text-white text-center mt-4">
@@ -342,15 +355,18 @@ export default function MedicineDetailsPage() {
                   <button
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                    className={` w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
                       index === currentImageIndex
                         ? 'border-blue-500 scale-110'
                         : 'border-white/30 hover:border-white/60'
                     }`}
+                    aria-label={`View image ${index + 1}`}
                   >
-                    <img
+                    <Image
                       src={`http://localhost:3000/uploads/medicines/${image}`}
                       alt={`Thumbnail ${index + 1}`}
+                      width={80}
+                      height={80}
                       className="w-full h-full object-cover"
                     />
                   </button>
@@ -363,6 +379,7 @@ export default function MedicineDetailsPage() {
             onClick={nextImage}
             className="absolute right-4 text-white hover:bg-white/20 rounded-full p-3 transition-colors"
             disabled={medicine.images.length <= 1}
+            aria-label="Next image"
           >
             <ChevronRight className="h-10 w-10" />
           </button>

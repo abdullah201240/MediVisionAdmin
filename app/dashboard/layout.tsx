@@ -3,8 +3,8 @@
 import { useAuth } from '@/context/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 import { 
   LayoutDashboard, 
   Pill, 
@@ -18,6 +18,39 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { medicinesApi, usersApi } from '@/lib/api';
+
+// Define data interfaces
+interface Medicine {
+  id: string;
+  name: string;
+  nameBn?: string;
+  brand?: string;
+  brandBn?: string;
+  details: string;
+  detailsBn?: string;
+  origin?: string;
+  originBn?: string;
+  sideEffects?: string;
+  sideEffectsBn?: string;
+  usage?: string;
+  usageBn?: string;
+  howToUse?: string;
+  howToUseBn?: string;
+  images?: string[];
+  createdAt: string;
+}
+
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  phone?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  image?: string;
+  createdAt: string;
+}
 
 // Define navigation items
 const mainNavItems = [
@@ -42,7 +75,7 @@ export default function DashboardLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{type: string, data: any}[]>([]);
+  const [searchResults, setSearchResults] = useState<{type: 'medicine' | 'user', data: Medicine | UserData}[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -105,8 +138,8 @@ export default function DashboardLayout({
       
       // Combine results
       const results = [
-        ...medicines.slice(0, 3).map((med: any) => ({ type: 'medicine', data: med })),
-        ...users.slice(0, 3).map((usr: any) => ({ type: 'user', data: usr }))
+        ...medicines.slice(0, 3).map((med: Medicine) => ({ type: 'medicine' as const, data: med })),
+        ...users.slice(0, 3).map((usr: UserData) => ({ type: 'user' as const, data: usr }))
       ];
       
       setSearchResults(results);
@@ -118,16 +151,18 @@ export default function DashboardLayout({
     }
   };
 
-  const handleResultClick = (result: {type: string, data: any}) => {
+  const handleResultClick = (result: {type: 'medicine' | 'user', data: Medicine | UserData}) => {
     setShowSearchResults(false);
     setSearchQuery('');
     
     if (result.type === 'medicine') {
       // Navigate to the specific medicine detail page
-      router.push(`/dashboard/medicines/${result.data.id}`);
+      // Type assertion since we know it's a Medicine when type is 'medicine'
+      router.push(`/dashboard/medicines/${(result.data as Medicine).id}`);
     } else if (result.type === 'user') {
       // Navigate to users page with search term
-      router.push(`/dashboard/users?search=${encodeURIComponent(result.data.name)}`);
+      // Type assertion since we know it's a UserData when type is 'user'
+      router.push(`/dashboard/users?search=${encodeURIComponent((result.data as UserData).name)}`);
     }
   };
 
@@ -183,11 +218,12 @@ export default function DashboardLayout({
                   <div className="p-2 bg-blue-600 rounded-lg">
                     <Pill className="h-5 w-5 text-white" />
                   </div>
-                  <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="font-bold text-lg  from-blue-600 to-purple-600 bg-clip-text text-transparent">
                     MediVision
                   </span>
                 </div>
                 <button
+                  title='Collapse Sidebar'
                   className="text-gray-500 hover:text-gray-700"
                   onClick={toggleSidebar}
                 >
@@ -197,6 +233,7 @@ export default function DashboardLayout({
             ) : (
               <div className="w-full flex justify-center">
                 <button
+                  title='Expand Sidebar'
                   className="text-gray-500 hover:text-gray-700"
                   onClick={toggleSidebar}
                 >
@@ -205,6 +242,7 @@ export default function DashboardLayout({
               </div>
             )}
             <button
+              title='Close Sidebar'
               className="lg:hidden text-gray-500 hover:text-gray-700"
               onClick={() => setSidebarOpen(false)}
             >
@@ -285,9 +323,11 @@ export default function DashboardLayout({
         <header className="sticky top-0 z-40 h-16 bg-white/80 backdrop-blur-xl border-b border-white/20 shadow-sm">
           <div className="flex items-center h-full px-4 sm:px-6">
             <button
+              title='Open Sidebar'
               className="lg:hidden mr-3 text-gray-500 hover:text-gray-700"
               onClick={() => setSidebarOpen(true)}
             >
+              <Menu className="h-6 w-6"  />
               <Menu className="h-6 w-6" />
             </button>
             <h1 className="text-lg font-semibold text-gray-900">
@@ -328,11 +368,14 @@ export default function DashboardLayout({
                       >
                         {result.type === 'medicine' ? (
                           <div className="flex items-center gap-3">
-                            {result.data.images && result.data.images.length > 0 ? (
+                            {/* Type assertion since we know it's a Medicine when type is 'medicine' */}
+                            {(result.data as Medicine).images && (result.data as Medicine).images!.length > 0 ? (
                               <div className="relative">
-                                <img
-                                  src={`http://localhost:3000/uploads/medicines/${result.data.images[0]}`}
-                                  alt={result.data.name}
+                                <Image
+                                  src={`http://localhost:3000/uploads/medicines/${(result.data as Medicine).images![0]}`}
+                                  alt={(result.data as Medicine).name}
+                                  width={40}
+                                  height={40}
                                   className="w-10 h-10 rounded-md object-cover"
                                 />
                                 <div className="absolute inset-0 bg-black/10 rounded-md"></div>
@@ -343,8 +386,8 @@ export default function DashboardLayout({
                               </div>
                             )}
                             <div>
-                              <div className="font-medium text-sm">{result.data.name}</div>
-                              <div className="text-xs text-gray-500">{result.data.brand || 'No brand'}</div>
+                              <div className="font-medium text-sm">{(result.data as Medicine).name}</div>
+                              <div className="text-xs text-gray-500">{(result.data as Medicine).brand || 'No brand'}</div>
                             </div>
                           </div>
                         ) : (
@@ -353,8 +396,8 @@ export default function DashboardLayout({
                               <User className="h-4 w-4 text-green-600" />
                             </div>
                             <div>
-                              <div className="font-medium text-sm">{result.data.name}</div>
-                              <div className="text-xs text-gray-500">{result.data.email}</div>
+                              <div className="font-medium text-sm">{(result.data as UserData).name}</div>
+                              <div className="text-xs text-gray-500">{(result.data as UserData).email}</div>
                             </div>
                           </div>
                         )}
@@ -377,15 +420,29 @@ export default function DashboardLayout({
                     {user.role}
                   </span>
                 </div>
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm">
-                    {user.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
+                {user.image ? (
+                  <Image
+                    src={`http://localhost:3000/uploads/users/${user.image}`}
+                    alt={user.name}
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 rounded-full object-cover"
+                    unoptimized={true}
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 
                 {/* User menu dropdown */}
                 <div className="relative">
                   <button 
+                  type="button"
+                  aria-haspopup="true"
+                  title='User menu'
                     id="user-button"
                     className="text-gray-500 hover:text-gray-700"
                     onClick={(e) => {

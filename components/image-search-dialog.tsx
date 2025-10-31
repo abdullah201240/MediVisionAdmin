@@ -14,15 +14,17 @@ import {
 import { Upload, X, Image as ImageIcon, Loader2, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { medicinesApi } from '@/lib/api';
+import Image from 'next/image';
+import { MedicineResponseDto } from '@/types';
 
 interface ImageSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSearchComplete: (results: any[]) => void;
+  onSearchComplete: (results: MedicineResponseDto[]) => void;
   onViewMedicine?: (medicineId: string) => void;
 }
 
-export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onViewMedicine }: ImageSearchDialogProps) {
+export function ImageSearchDialog({ open, onOpenChange, onSearchComplete }: ImageSearchDialogProps) {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
@@ -97,7 +99,7 @@ export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onView
       formData.append('image', selectedImage);
 
       // Use the medicinesApi with cache-busting
-      const results = await medicinesApi.searchByImage(formData);
+      const results: MedicineResponseDto[] = await medicinesApi.searchByImage(formData);
       
       toast({
         title: 'Search Complete',
@@ -107,11 +109,11 @@ export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onView
       onSearchComplete(results);
       onOpenChange(false);
       handleRemoveImage();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Image search error:', error);
       toast({
         title: 'Search Failed',
-        description: error.response?.data?.message || 'Failed to search by image. Please try again.',
+        description: (error as Error).message || 'Failed to search by image. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -122,7 +124,7 @@ export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onView
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+        <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Search className="h-6 w-6 text-blue-600" />
             Search Medicine by Image
@@ -164,9 +166,11 @@ export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onView
             {imagePreview ? (
               <div className="relative">
                 <div className="border-2 border-blue-300 rounded-lg overflow-hidden bg-gray-50">
-                  <img
+                  <Image
                     src={imagePreview}
                     alt="Selected medicine"
+                    width={600}
+                    height={320}
                     className="w-full h-80 object-contain"
                   />
                 </div>
@@ -219,7 +223,7 @@ export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onView
           </div>
         </div>
 
-        <DialogFooter className="flex-shrink-0 border-t border-gray-200 pt-4 gap-3">
+        <DialogFooter className="border-t border-gray-200 pt-4 gap-3">
           <Button
             type="button"
             variant="outline"
@@ -238,7 +242,7 @@ export function ImageSearchDialog({ open, onOpenChange, onSearchComplete, onView
             onClick={handleSearch}
             disabled={!selectedImage || isSearching}
             size="lg"
-            className="flex items-center gap-2 min-w-[160px] bg-blue-600 hover:bg-blue-700"
+            className="flex items-center gap-2  bg-blue-600 hover:bg-blue-700"
           >
             {isSearching ? (
               <>

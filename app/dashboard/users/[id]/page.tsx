@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { 
   User, 
@@ -15,8 +16,6 @@ import {
   Calendar, 
   Save, 
   Camera, 
-  Upload,
-  X,
   Edit3,
   MapPin,
   Briefcase,
@@ -38,6 +37,30 @@ interface UserData {
   location?: string;
   bio?: string;
   createdAt: string;
+}
+
+interface UserApiResponse {
+  id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  image?: string;
+  coverPhoto?: string;
+  role?: string;
+  location?: string;
+  bio?: string;
+  createdAt?: string;
+}
+
+interface UpdateUserData {
+  name?: string;
+  phone?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  location?: string;
+  bio?: string;
 }
 
 export default function UserDetailsPage() {
@@ -63,25 +86,8 @@ export default function UserDetailsPage() {
   });
   const [coverPhotoPreview, setCoverPhotoPreview] = useState<string | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
-  const coverPhotoInputRef = useRef<HTMLInputElement>(null);
-  const profileImageInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!currentUser) {
-      router.push('/login');
-      return;
-    }
-    
-    // Only admins can view user details
-    if (currentUser.role !== 'admin') {
-      router.push('/dashboard');
-      return;
-    }
-    
-    fetchUserDetails();
-  }, [currentUser, router, params.id]);
-
-  const fetchUserDetails = async () => {
+  const fetchUserDetails = useCallback(async () => {
     try {
       const response = await usersApi.getById(params.id as string);
       
@@ -97,7 +103,7 @@ export default function UserDetailsPage() {
         }
       }
       
-      const userData: any = {
+      const userData: UserApiResponse = {
         id: response.id || '',
         name: response.name || '',
         email: response.email || '',
@@ -112,7 +118,20 @@ export default function UserDetailsPage() {
         createdAt: response.createdAt || '',
       };
       
-      setUserData(userData);
+      setUserData({
+        id: userData.id || '',
+        name: userData.name || '',
+        email: userData.email || '',
+        phone: userData.phone,
+        gender: userData.gender,
+        dateOfBirth: userData.dateOfBirth,
+        image: userData.image,
+        coverPhoto: userData.coverPhoto,
+        role: userData.role || 'user',
+        location: userData.location,
+        bio: userData.bio,
+        createdAt: userData.createdAt || '',
+      });
       
       if (response.image) {
         setProfileImagePreview(`http://localhost:3000/uploads/users/${response.image}`);
@@ -120,33 +139,48 @@ export default function UserDetailsPage() {
       if (response.coverPhoto) {
         setCoverPhotoPreview(`http://localhost:3000/uploads/users/${response.coverPhoto}`);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching user details:', error);
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to fetch user details',
+        description: (error as Error).message || 'Failed to fetch user details',
         variant: 'destructive',
       });
       router.push('/dashboard/users');
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id, router, toast]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  useEffect(() => {
+    if (!currentUser) {
+      router.push('/login');
+      return;
+    }
+    
+    // Only admins can view user details
+    if (currentUser.role !== 'admin') {
+      router.push('/dashboard');
+      return;
+    }
+    
+    fetchUserDetails();
+  }, [currentUser, router, fetchUserDetails]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setUserData(prev => ({
       ...prev,
       [name]: value
     }));
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdating(true);
 
     try {
-      const updateData: any = {
+      const updateData: UpdateUserData = {
         name: userData.name,
         phone: userData.phone,
         gender: userData.gender,
@@ -157,8 +191,8 @@ export default function UserDetailsPage() {
 
       // Only include fields that have values
       Object.keys(updateData).forEach(key => {
-        if (updateData[key] === '') {
-          delete updateData[key];
+        if (updateData[key as keyof UpdateUserData] === '') {
+          delete updateData[key as keyof UpdateUserData];
         }
       });
 
@@ -169,19 +203,19 @@ export default function UserDetailsPage() {
         description: 'User information has been updated successfully!',
         variant: 'success',
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Update error:', error);
       toast({
         title: 'Update Failed',
-        description: error.response?.data?.message || 'Failed to update user',
+        description: (error as Error).message || 'Failed to update user',
         variant: 'destructive',
       });
     } finally {
       setUpdating(false);
     }
-  };
+  }, [userData, toast]);
 
-  const handleRoleChange = async (newRole: string) => {
+  const handleRoleChange = useCallback(async (newRole: string) => {
     try {
       await usersApi.updateRole(userData.id, newRole);
       setUserData(prev => ({ ...prev, role: newRole }));
@@ -191,15 +225,15 @@ export default function UserDetailsPage() {
         description: `User role has been changed to ${newRole}!`,
         variant: 'success',
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Role update error:', error);
       toast({
         title: 'Role Update Failed',
-        description: error.response?.data?.message || 'Failed to update user role',
+        description: (error as Error).message || 'Failed to update user role',
         variant: 'destructive',
       });
     }
-  };
+  }, [userData.id, toast]);
 
   if (loading) {
     return (
@@ -214,15 +248,17 @@ export default function UserDetailsPage() {
       {/* Enhanced Cover Photo Section */}
       <Card className="relative rounded-2xl overflow-hidden border-none shadow-none bg-white">
         {/* Cover Photo Container */}
-        <div className="relative h-80 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
+        <div className="relative h-80  from-blue-500 via-purple-500 to-pink-500">
           {coverPhotoPreview ? (
-            <img 
+            <Image 
               src={coverPhotoPreview} 
               alt="Cover" 
+              width={1200}
+              height={320}
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+            <div className="w-full h-full flex items-center justify-center  from-gray-100 to-gray-200">
               <div className="text-center text-gray-500">
                 <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
                 <p className="text-lg font-medium">No cover photo</p>
@@ -235,17 +271,19 @@ export default function UserDetailsPage() {
         <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Profile Picture Section */}
-            <div className="flex-shrink-0 -mt-24 lg:-mt-32">
+            <div className="mt-24 lg:-mt-32">
               <div className="relative group">
                 <div className="w-32 h-32 lg:w-40 lg:h-40 rounded-2xl border-4 border-white bg-white shadow-2xl flex items-center justify-center overflow-hidden">
                   {profileImagePreview ? (
-                    <img 
+                    <Image 
                       src={profileImagePreview} 
                       alt="Profile" 
+                      width={160}
+                      height={160}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                    <div className="w-full h-full rounded-2xl from-blue-100 to-purple-100 flex items-center justify-center">
                       <User className="h-16 w-16 text-blue-600" />
                     </div>
                   )}
@@ -306,6 +344,7 @@ export default function UserDetailsPage() {
                       value={userData.role}
                       onChange={(e) => handleRoleChange(e.target.value)}
                       className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                      aria-label="User role"
                     >
                       <option value="user">User</option>
                       <option value="admin">Admin</option>
@@ -412,6 +451,7 @@ export default function UserDetailsPage() {
                     value={userData.gender || ''}
                     onChange={handleInputChange}
                     className="w-full h-12 px-3 py-2 border border-gray-200 rounded-xl bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    aria-label="Gender"
                   >
                     <option value="">Select gender</option>
                     <option value="male">Male</option>

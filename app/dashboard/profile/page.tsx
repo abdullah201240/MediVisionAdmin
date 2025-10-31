@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { ToastDemo } from './toast-demo';
 import { 
   User, 
   Mail, 
@@ -16,13 +16,13 @@ import {
   Calendar, 
   Save, 
   Camera, 
-  Upload,
   X,
   Edit3,
   MapPin,
   Briefcase
 } from 'lucide-react';
 import { authApi } from '@/lib/api';
+import { UserResponseDto } from '@/types/user';
 
 interface ProfileData {
   id: string;
@@ -36,6 +36,15 @@ interface ProfileData {
   role: string;
   location?: string;
   bio?: string;
+}
+
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
 }
 
 export default function ProfilePage() {
@@ -68,53 +77,122 @@ export default function ProfilePage() {
       return;
     }
     
-    const userData: any = user;
-    
-    let formattedDob = '';
-    if (userData.dateOfBirth) {
+    // Fetch the full user profile data
+    const fetchProfile = async () => {
       try {
-        const date = new Date(userData.dateOfBirth);
-        if (!isNaN(date.getTime())) {
-          formattedDob = date.toISOString().split('T')[0];
+        const userData: UserResponseDto = await authApi.getProfile();
+        
+        let formattedDob = '';
+        if (userData.dateOfBirth) {
+          try {
+            const date = new Date(userData.dateOfBirth);
+            if (!isNaN(date.getTime())) {
+              formattedDob = date.toISOString().split('T')[0];
+            }
+          } catch (e) {
+            console.error('Error formatting date:', e);
+          }
         }
-      } catch (e) {
-        console.error('Error formatting date:', e);
+        
+        setProfileData({
+          id: userData.id || '',
+          name: userData.name || '',
+          email: userData.email || '',
+          phone: userData.phone || '',
+          gender: userData.gender || '',
+          dateOfBirth: formattedDob,
+          image: userData.image || '',
+          coverPhoto: userData.coverPhoto || '',
+          role: userData.role || '',
+          location: userData.location || '',
+          bio: userData.bio || '',
+        });
+        
+        if (userData.image) {
+          setProfileImagePreview(`http://localhost:3000/uploads/users/${userData.image}`);
+        }
+        if (userData.coverPhoto) {
+          setCoverPhotoPreview(`http://localhost:3000/uploads/users/${userData.coverPhoto}`);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
     
-    setProfileData({
-      id: userData.id || '',
-      name: userData.name || '',
-      email: userData.email || '',
-      phone: userData.phone || '',
-      gender: userData.gender || '',
-      dateOfBirth: formattedDob,
-      image: userData.image || '',
-      coverPhoto: userData.coverPhoto || '',
-      role: userData.role || '',
-      location: userData.location || '',
-      bio: userData.bio || '',
-    });
-    
-    if (userData.image) {
-      setProfileImagePreview(`http://localhost:3000/uploads/users/${userData.image}`);
-    }
-    if (userData.coverPhoto) {
-      setCoverPhotoPreview(`http://localhost:3000/uploads/users/${userData.coverPhoto}`);
-    }
-    
-    setLoading(false);
+    fetchProfile();
   }, [user, router]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const uploadCoverPhoto = useCallback(async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('coverPhoto', file);
+      
+      await authApi.updateProfileCover(formData);
+      await checkAuth();
+      
+      toast({
+        title: 'Cover Photo Updated',
+        description: 'Your cover photo has been updated successfully!',
+        variant: 'success',
+      });
+    } catch (error: unknown) {
+      console.error('Cover photo upload error:', error);
+      const apiError = error as ApiError;
+      toast({
+        title: 'Upload Failed',
+        description: apiError.response?.data?.message || 'Failed to upload cover photo',
+        variant: 'destructive',
+      });
+      
+      if (profileData.coverPhoto) {
+        setCoverPhotoPreview(`http://localhost:3000/uploads/users/${profileData.coverPhoto}`);
+      } else {
+        setCoverPhotoPreview(null);
+      }
+    }
+  }, [checkAuth, profileData.coverPhoto, toast]);
+
+  const uploadProfileImage = useCallback(async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      await authApi.updateProfileImage(formData);
+      await checkAuth();
+      
+      toast({
+        title: 'Profile Image Updated',
+        description: 'Your profile image has been updated successfully!',
+        variant: 'success',
+      });
+    } catch (error: unknown) {
+      console.error('Profile image upload error:', error);
+      const apiError = error as ApiError;
+      toast({
+        title: 'Upload Failed',
+        description: apiError.response?.data?.message || 'Failed to upload profile image',
+        variant: 'destructive',
+      });
+      
+      if (profileData.image) {
+        setProfileImagePreview(`http://localhost:3000/uploads/users/${profileData.image}`);
+      } else {
+        setProfileImagePreview(null);
+      }
+    }
+  }, [checkAuth, profileData.image, toast]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setProfileData(prev => ({
       ...prev,
       [name]: value
     }));
-  };
+  }, []);
 
-  const handleCoverPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverPhotoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
@@ -143,9 +221,9 @@ export default function ProfilePage() {
       
       uploadCoverPhoto(file);
     }
-  };
+  }, [toast, uploadCoverPhoto]);
 
-  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
@@ -174,72 +252,14 @@ export default function ProfilePage() {
       
       uploadProfileImage(file);
     }
-  };
+  }, [toast, uploadProfileImage]);
 
-  const uploadCoverPhoto = async (file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append('coverPhoto', file);
-      
-      await authApi.updateProfileCover(formData);
-      await checkAuth();
-      
-      toast({
-        title: 'Cover Photo Updated',
-        description: 'Your cover photo has been updated successfully!',
-        variant: 'success',
-      });
-    } catch (error: any) {
-      console.error('Cover photo upload error:', error);
-      toast({
-        title: 'Upload Failed',
-        description: error.response?.data?.message || 'Failed to upload cover photo',
-        variant: 'destructive',
-      });
-      
-      if (profileData.coverPhoto) {
-        setCoverPhotoPreview(`http://localhost:3000/uploads/users/${profileData.coverPhoto}`);
-      } else {
-        setCoverPhotoPreview(null);
-      }
-    }
-  };
-
-  const uploadProfileImage = async (file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      await authApi.updateProfileImage(formData);
-      await checkAuth();
-      
-      toast({
-        title: 'Profile Image Updated',
-        description: 'Your profile image has been updated successfully!',
-        variant: 'success',
-      });
-    } catch (error: any) {
-      console.error('Profile image upload error:', error);
-      toast({
-        title: 'Upload Failed',
-        description: error.response?.data?.message || 'Failed to upload profile image',
-        variant: 'destructive',
-      });
-      
-      if (profileData.image) {
-        setProfileImagePreview(`http://localhost:3000/uploads/users/${profileData.image}`);
-      } else {
-        setProfileImagePreview(null);
-      }
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdating(true);
 
     try {
-      const updateData: any = {
+      const updateData: Record<string, string | undefined> = {
         name: profileData.name,
         phone: profileData.phone,
         gender: profileData.gender,
@@ -262,27 +282,28 @@ export default function ProfilePage() {
         description: 'Your profile has been updated successfully!',
         variant: 'success',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Update error:', error);
+      const apiError = error as ApiError;
       toast({
         title: 'Update Failed',
-        description: error.response?.data?.message || 'Failed to update profile',
+        description: apiError.response?.data?.message || 'Failed to update profile',
         variant: 'destructive',
       });
     } finally {
       setUpdating(false);
     }
-  };
+  }, [profileData, checkAuth, toast]);
 
-  const triggerCoverPhotoUpload = () => {
+  const triggerCoverPhotoUpload = useCallback(() => {
     coverPhotoInputRef.current?.click();
-  };
+  }, []);
 
-  const triggerProfileImageUpload = () => {
+  const triggerProfileImageUpload = useCallback(() => {
     profileImageInputRef.current?.click();
-  };
+  }, []);
 
-  const removeCoverPhoto = async () => {
+  const removeCoverPhoto = useCallback(async () => {
     try {
       await removeCoverPhotoFromContext();
       setCoverPhotoPreview(null);
@@ -291,16 +312,17 @@ export default function ProfilePage() {
         description: 'Your cover photo has been removed successfully!',
         variant: 'success',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       toast({
         title: 'Removal Failed',
-        description: error.response?.data?.message || 'Failed to remove cover photo',
+        description: apiError.response?.data?.message || 'Failed to remove cover photo',
         variant: 'destructive',
       });
     }
-  };
+  }, [removeCoverPhotoFromContext, toast]);
 
-  const removeProfileImage = async () => {
+  const removeProfileImage = useCallback(async () => {
     try {
       await removeProfileImageFromContext();
       setProfileImagePreview(null);
@@ -309,14 +331,15 @@ export default function ProfilePage() {
         description: 'Your profile image has been removed successfully!',
         variant: 'success',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       toast({
         title: 'Removal Failed',
-        description: error.response?.data?.message || 'Failed to remove profile image',
+        description: apiError.response?.data?.message || 'Failed to remove profile image',
         variant: 'destructive',
       });
     }
-  };
+  }, [removeProfileImageFromContext, toast]);
 
   if (loading) {
     return (
@@ -331,15 +354,18 @@ export default function ProfilePage() {
       {/* Enhanced Cover Photo Section */}
       <Card className="relative rounded-2xl overflow-hidden border-none shadow-none bg-white">
         {/* Cover Photo Container */}
-        <div className="relative h-80 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
+        <div className="relative h-80  from-blue-500 via-purple-500 to-pink-500">
           {coverPhotoPreview ? (
-            <img 
+            <Image 
               src={coverPhotoPreview} 
               alt="Cover" 
+              width={1200}
+              height={320}
               className="w-full h-full object-cover"
+              unoptimized={true}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+            <div className="w-full h-full flex items-center justify-center  from-gray-100 to-gray-200">
               <div className="text-center text-gray-500">
                 <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
                 <p className="text-lg font-medium">Add a cover photo</p>
@@ -378,17 +404,20 @@ export default function ProfilePage() {
         <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Profile Picture Section */}
-            <div className="flex-shrink-0 -mt-24 lg:-mt-32">
+            <div className=" -mt-24 lg:-mt-32">
               <div className="relative group">
                 <div className="w-32 h-32 lg:w-40 lg:h-40 rounded-2xl border-4 border-white bg-white shadow-2xl flex items-center justify-center overflow-hidden">
                   {profileImagePreview ? (
-                    <img 
+                    <Image 
                       src={profileImagePreview} 
                       alt="Profile" 
+                      width={160}
+                      height={160}
                       className="w-full h-full object-cover"
+                      unoptimized={true}
                     />
                   ) : (
-                    <div className="w-full h-full rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                    <div className="w-full h-full rounded-2xl  from-blue-100 to-purple-100 flex items-center justify-center">
                       <User className="h-16 w-16 text-blue-600" />
                     </div>
                   )}
@@ -484,6 +513,7 @@ export default function ProfilePage() {
                 className="hidden"
                 accept="image/*"
                 onChange={handleCoverPhotoChange}
+                aria-label="Upload cover photo"
               />
               
               <input
@@ -492,6 +522,7 @@ export default function ProfilePage() {
                 className="hidden"
                 accept="image/*"
                 onChange={handleProfileImageChange}
+                aria-label="Upload profile image"
               />
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -572,6 +603,7 @@ export default function ProfilePage() {
                     value={profileData.gender || ''}
                     onChange={handleInputChange}
                     className="w-full h-12 px-3 py-2 border border-gray-200 rounded-xl bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    aria-label="Select gender"
                   >
                     <option value="">Select gender</option>
                     <option value="male">Male</option>

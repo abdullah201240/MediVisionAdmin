@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Pill, Users, Activity, TrendingUp, Camera, Search, ArrowRight, RefreshCw } from 'lucide-react';
+import { Pill, Users, Activity, TrendingUp, Camera, Search, ArrowRight } from 'lucide-react';
 import { medicinesApi, usersApi } from '@/lib/api';
 import { ImageSearchDialog } from '@/components/image-search-dialog';
 import { MedicineDetailsModal } from '@/components/medicine-details-modal';
+import { MedicineResponseDto, PaginatedMedicineResponse, PaginatedUserResponse } from '@/types';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -18,10 +20,9 @@ export default function DashboardPage() {
   });
   const [loading, setLoading] = useState(true);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [selectedMedicine, setSelectedMedicine] = useState<any>(null);
+  const [searchResults, setSearchResults] = useState<MedicineResponseDto[]>([]);
+  const [selectedMedicine, setSelectedMedicine] = useState<MedicineResponseDto | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
   // Clear search results when dialog opens
   useEffect(() => {
@@ -33,7 +34,7 @@ export default function DashboardPage() {
   const fetchStats = async () => {
     try {
       // Fetch medicines (no auth required)
-      const medicinesResponse = await medicinesApi.getAll();
+      const medicinesResponse: PaginatedMedicineResponse = await medicinesApi.getAll();
       
       // Initialize user stats
       let totalUsers = 0;
@@ -41,17 +42,17 @@ export default function DashboardPage() {
       
       try {
         // Fetch users with pagination to get total count
-        const usersResponse = await usersApi.getAll({ page: 1, limit: 1 });
+        const usersResponse: PaginatedUserResponse = await usersApi.getAll({ page: 1, limit: 1 });
         totalUsers = usersResponse.total || 0;
         
         // Fetch users with role filter to get active users
-        const activeUsersResponse = await usersApi.getAll({ 
+        const activeUsersResponse: PaginatedUserResponse = await usersApi.getAll({ 
           page: 1, 
           limit: 1, 
           role: 'user' 
         });
         activeUsers = activeUsersResponse.total || 0;
-      } catch (usersError: any) {
+      } catch  {
         // If we get an unauthorized error, we'll show 0 users
         console.log('Unable to fetch user stats (likely not authenticated)');
       }
@@ -71,7 +72,6 @@ export default function DashboardPage() {
       });
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
@@ -79,12 +79,8 @@ export default function DashboardPage() {
     fetchStats();
   }, []);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchStats();
-  };
 
-  const handleImageSearchComplete = (results: any[]) => {
+  const handleImageSearchComplete = (results: MedicineResponseDto[]) => {
     // Clear previous results before setting new ones
     setSearchResults([]);
     // Small delay to ensure DOM updates
@@ -95,9 +91,17 @@ export default function DashboardPage() {
     fetchStats();
   };
 
-  const handleViewMedicine = (medicine: any) => {
+  const handleViewMedicine = (medicine: MedicineResponseDto) => {
     setSelectedMedicine(medicine);
     setDetailsModalOpen(true);
+  };
+
+  const handleViewMedicineById = (medicineId: string) => {
+    const medicine = searchResults.find(m => m.id === medicineId) || null;
+    if (medicine) {
+      setSelectedMedicine(medicine);
+      setDetailsModalOpen(true);
+    }
   };
 
   const statCards = [
@@ -186,7 +190,7 @@ export default function DashboardPage() {
         {/* Image Search Section - Full width on mobile, spans 2 columns on large screens */}
         <div className="lg:col-span-2 space-y-6">
           {/* Image Search Card */}
-          <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+          <Card className="border-2 border-blue-200  from-blue-50 to-indigo-50">
             <CardHeader className="pb-4">
               <div className="text-center space-y-3">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-full">
@@ -231,9 +235,11 @@ export default function DashboardPage() {
                       <div className="space-y-2">
                         {medicine.images && medicine.images.length > 0 ? (
                           <div className="relative overflow-hidden rounded">
-                            <img
+                            <Image
                               src={`http://localhost:3000/uploads/medicines/${medicine.images[0]}`}
                               alt={medicine.name}
+                              width={200}
+                              height={96}
                               className="w-full h-24 object-cover"
                             />
                           </div>
@@ -380,7 +386,7 @@ export default function DashboardPage() {
         open={imageSearchOpen}
         onOpenChange={setImageSearchOpen}
         onSearchComplete={handleImageSearchComplete}
-        onViewMedicine={handleViewMedicine}
+        onViewMedicine={handleViewMedicineById}
       />
     </div>
   );

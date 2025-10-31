@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { 
   Pill, 
@@ -12,7 +13,6 @@ import {
   Camera, 
   Search, 
   ArrowRight, 
-  RefreshCw,
   Database,
   Server,
   Clock
@@ -20,6 +20,26 @@ import {
 import { medicinesApi, usersApi } from '@/lib/api';
 import { ImageSearchDialog } from '@/components/image-search-dialog';
 import { MedicineDetailsModal } from '@/components/medicine-details-modal';
+
+// Define types for our data
+interface Medicine {
+  id: string;
+  name: string;
+  nameBn?: string;
+  brand?: string;
+  brandBn?: string;
+  details?: string;
+  detailsBn?: string;
+  origin?: string;
+  originBn?: string;
+  type?: string;
+  dosage?: string;
+  createdAt: string;
+  images?: string[];
+  similarity?: number;
+  confidence?: string;
+  [key: string]: unknown;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -31,10 +51,9 @@ export default function DashboardPage() {
   });
   const [loading, setLoading] = useState(true);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [selectedMedicine, setSelectedMedicine] = useState<any>(null);
+  const [searchResults, setSearchResults] = useState<Medicine[]>([]);
+  const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
   // Clear search results when dialog opens
   useEffect(() => {
@@ -64,7 +83,7 @@ export default function DashboardPage() {
           role: 'user' 
         });
         activeUsers = activeUsersResponse.total || 0;
-      } catch (usersError: any) {
+      } catch  {
         // If we get an unauthorized error, we'll show 0 users
         console.log('Unable to fetch user stats (likely not authenticated)');
       }
@@ -86,7 +105,6 @@ export default function DashboardPage() {
       });
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
@@ -94,12 +112,8 @@ export default function DashboardPage() {
     fetchStats();
   }, []);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchStats();
-  };
 
-  const handleImageSearchComplete = (results: any[]) => {
+  const handleImageSearchComplete = (results: Medicine[]) => {
     // Clear previous results before setting new ones
     setSearchResults([]);
     // Small delay to ensure DOM updates
@@ -110,7 +124,7 @@ export default function DashboardPage() {
     fetchStats();
   };
 
-  const handleViewMedicine = (medicine: any) => {
+  const handleViewMedicine = (medicine: Medicine) => {
     setSelectedMedicine(medicine);
     setDetailsModalOpen(true);
   };
@@ -237,7 +251,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Image Search Section */}
-        <Card className="border-2 border-blue-300 bg-gradient-to-br from-blue-50/80 via-indigo-50/80 to-purple-50/80 shadow-lg backdrop-blur-sm">
+        <Card className="border-2 border-blue-300  from-blue-50/80 via-indigo-50/80 to-purple-50/80 shadow-lg backdrop-blur-sm">
           <CardHeader className="pb-4">
             <div className="text-center space-y-4">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-2">
@@ -297,9 +311,11 @@ export default function DashboardPage() {
                         <div className="space-y-3">
                           {medicine.images && medicine.images.length > 0 ? (
                             <div className="relative overflow-hidden rounded-lg">
-                              <img
+                              <Image
                                 src={`http://localhost:3000/uploads/medicines/${medicine.images[0]}`}
                                 alt={medicine.name}
+                                width={300}
+                                height={160}
                                 className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
@@ -311,7 +327,7 @@ export default function DashboardPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="w-full h-40 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                            <div className="w-full h-40  from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
                               <Pill className="h-16 w-16 text-gray-400" />
                             </div>
                           )}
@@ -394,7 +410,7 @@ export default function DashboardPage() {
       
       {/* Medicine Details Modal */}
       <MedicineDetailsModal
-        medicine={selectedMedicine}
+        medicine={selectedMedicine as Medicine}
         open={detailsModalOpen}
         onOpenChange={setDetailsModalOpen}
       />
@@ -403,8 +419,14 @@ export default function DashboardPage() {
       <ImageSearchDialog
         open={imageSearchOpen}
         onOpenChange={setImageSearchOpen}
-        onSearchComplete={handleImageSearchComplete}
-        onViewMedicine={handleViewMedicine}
+        onSearchComplete={(results) => handleImageSearchComplete(results as Medicine[])}
+        onViewMedicine={(medicineId) => {
+          // Find the medicine in searchResults by ID and view it
+          const medicine = searchResults.find(m => m.id === medicineId);
+          if (medicine) {
+            handleViewMedicine(medicine);
+          }
+        }}
       />
     </div>
   );

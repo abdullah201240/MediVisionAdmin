@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,10 +22,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader} from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { medicinesApi } from '@/lib/api';
-import { Plus, Pencil, Trash2, Search, Upload, X, Image as ImageIcon, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Upload, X, Image as ImageIcon, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
 
 interface Medicine {
   id: string;
@@ -109,37 +110,29 @@ export default function MedicinesPage() {
   
   const { toast } = useToast();
 
-  // Set initial search term from URL params
-  useEffect(() => {
-    const search = searchParams.get('search');
-    if (search) {
-      setSearchTerm(search);
-    }
-  }, [searchParams]);
+  const resetForm = useCallback(() => {
+    setFormData({
+      name: '',
+      nameBn: '',
+      brand: '',
+      brandBn: '',
+      details: '',
+      detailsBn: '',
+      origin: '',
+      originBn: '',
+      sideEffects: '',
+      sideEffectsBn: '',
+      usage: '',
+      usageBn: '',
+      howToUse: '',
+      howToUseBn: '',
+    });
+    setSelectedImages([]);
+    setImagePreview([]);
+    setEditingMedicine(null);
+  }, []);
 
-  useEffect(() => {
-    fetchMedicines();
-  }, [currentPage, pageSize, searchTerm, sortBy, sortOrder]);
-
-  // Keyboard navigation for image viewer
-  useEffect(() => {
-    if (!imageViewerOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        previousImage();
-      } else if (e.key === 'ArrowRight') {
-        nextImage();
-      } else if (e.key === 'Escape') {
-        setImageViewerOpen(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [imageViewerOpen, currentImageIndex, viewerImages.length]);
-
-  const fetchMedicines = async () => {
+  const fetchMedicines = useCallback(async () => {
     try {
       setLoading(true);
       const response = await medicinesApi.getAll({
@@ -162,6 +155,7 @@ export default function MedicinesPage() {
         setTotalPages(1);
       }
     } catch (error) {
+      console.error('Failed to fetch medicines:', error);
       toast({
         title: 'Medicine Fetch Failed',
         description: 'Failed to fetch medicines. Please try again.',
@@ -170,9 +164,48 @@ export default function MedicinesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchTerm, sortBy, sortOrder, toast]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Set initial search term from URL params
+  useEffect(() => {
+    const search = searchParams.get('search');
+    if (search) {
+      setSearchTerm(search);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    fetchMedicines();
+  }, [fetchMedicines]);
+
+  // Image viewer navigation functions
+  const nextImage = useCallback(() => {
+    setCurrentImageIndex((prev) => (prev + 1) % viewerImages.length);
+  }, [viewerImages.length]);
+
+  const previousImage = useCallback(() => {
+    setCurrentImageIndex((prev) => (prev - 1 + viewerImages.length) % viewerImages.length);
+  }, [viewerImages.length]);
+
+  // Keyboard navigation for image viewer
+  useEffect(() => {
+    if (!imageViewerOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        previousImage();
+      } else if (e.key === 'ArrowRight') {
+        nextImage();
+      } else if (e.key === 'Escape') {
+        setImageViewerOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [imageViewerOpen, currentImageIndex, viewerImages.length, previousImage, nextImage]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
@@ -206,18 +239,20 @@ export default function MedicinesPage() {
       setDialogOpen(false);
       resetForm();
       fetchMedicines();
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Operation failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to complete the operation. Please try again.';
       toast({
         title: 'Operation Failed',
-        description: error.response?.data?.message || 'Failed to complete the operation. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [editingMedicine, fetchMedicines, formData, resetForm, selectedImages, toast]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     if (!confirm('Are you sure you want to delete this medicine?')) return;
 
     try {
@@ -229,15 +264,16 @@ export default function MedicinesPage() {
       });
       fetchMedicines();
     } catch (error) {
+      console.error('Failed to delete medicine:', error);
       toast({
         title: 'Deletion Failed',
         description: 'Failed to delete medicine. Please try again.',
         variant: 'destructive',
       });
     }
-  };
+  }, [fetchMedicines, toast]);
 
-  const handleEdit = (medicine: Medicine) => {
+  const handleEdit = useCallback((medicine: Medicine) => {
     setEditingMedicine(medicine);
     setFormData({
       name: medicine.name,
@@ -260,9 +296,9 @@ export default function MedicinesPage() {
       setImagePreview(medicine.images.map(img => `http://localhost:3000/uploads/medicines/${img}`));
     }
     setDialogOpen(true);
-  };
+  }, []);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
@@ -287,28 +323,20 @@ export default function MedicinesPage() {
       };
       reader.readAsDataURL(file);
     });
-  };
+  }, [toast]);
 
-  const removeImage = (index: number) => {
+  const removeImage = useCallback((index: number) => {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
     setImagePreview(prev => prev.filter((_, i) => i !== index));
-  };
+  }, []);
 
-  const openImageViewer = (images: string[], index: number = 0) => {
+  const openImageViewer = useCallback((images: string[], index: number = 0) => {
     setViewerImages(images);
     setCurrentImageIndex(index);
     setImageViewerOpen(true);
-  };
+  }, []);
 
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % viewerImages.length);
-  };
-
-  const previousImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + viewerImages.length) % viewerImages.length);
-  };
-
-  const handleSort = (field: string) => {
+  const handleSort = useCallback((field: string) => {
     if (sortBy === field) {
       // Toggle sort order
       setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC');
@@ -318,18 +346,18 @@ export default function MedicinesPage() {
       setSortOrder('ASC');
     }
     setCurrentPage(1); // Reset to first page
-  };
+  }, [sortBy, sortOrder]);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
-  const handlePageSizeChange = (size: number) => {
+  const handlePageSizeChange = useCallback((size: number) => {
     setPageSize(size);
     setCurrentPage(1); // Reset to first page
-  };
+  }, []);
 
-  const getSortIcon = (field: string) => {
+  const getSortIcon = useCallback((field: string) => {
     if (sortBy !== field) {
       return <ArrowUpDown className="h-4 w-4 ml-1 text-gray-400" />;
     }
@@ -338,29 +366,7 @@ export default function MedicinesPage() {
     ) : (
       <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />
     );
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      nameBn: '',
-      brand: '',
-      brandBn: '',
-      details: '',
-      detailsBn: '',
-      origin: '',
-      originBn: '',
-      sideEffects: '',
-      sideEffectsBn: '',
-      usage: '',
-      usageBn: '',
-      howToUse: '',
-      howToUseBn: '',
-    });
-    setSelectedImages([]);
-    setImagePreview([]);
-    setEditingMedicine(null);
-  };
+  }, [sortBy, sortOrder]);
 
   return (
     <div className="space-y-6">
@@ -407,6 +413,7 @@ export default function MedicinesPage() {
                     setCurrentPage(1);
                   }}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Sort medicines by"
                 >
                   <option value="createdAt">Date Created</option>
                   <option value="name">Name (A-Z)</option>
@@ -451,6 +458,7 @@ export default function MedicinesPage() {
                 value={pageSize}
                 onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                 className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label="Items per page"
               >
                 <option value={5}>5 per page</option>
                 <option value={10}>10 per page</option>
@@ -532,15 +540,13 @@ export default function MedicinesPage() {
                                   }}
                                   title="Click to view full size"
                                 >
-                                  <img
+                                  <Image
                                     src={`http://localhost:3000/uploads/medicines/${image}`}
                                     alt={`${medicine.name} - Image ${idx + 1}`}
+                                    width={64}
+                                    height={64}
                                     className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                      target.parentElement!.innerHTML = '<div class="text-xs text-gray-400 p-1 text-center">Error</div>';
-                                    }}
+                                    unoptimized={true}
                                   />
                                 </div>
                               ))
@@ -1019,10 +1025,13 @@ export default function MedicinesPage() {
                       <div className="flex gap-2 flex-wrap">
                         {imagePreview.map((preview, index) => (
                           <div key={index} className="relative group">
-                            <img
+                            <Image
                               src={preview}
                               alt={`Preview ${index + 1}`}
+                              width={80}
+                              height={80}
                               className="w-20 h-20 rounded-lg object-cover border"
+                              unoptimized={true}
                             />
                             <Button
                               type="button"
@@ -1041,6 +1050,33 @@ export default function MedicinesPage() {
                 </div>
               </div>
             </div>
+            <DialogFooter className="flex justify-end gap-2 pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDialogOpen(false);
+                  resetForm();
+                }}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  editingMedicine ? 'Update Medicine' : 'Save Medicine'
+                )}
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -1052,6 +1088,7 @@ export default function MedicinesPage() {
             <button
               onClick={() => setImageViewerOpen(false)}
               className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all"
+              aria-label="Close image viewer"
             >
               <X className="h-6 w-6" />
             </button>
@@ -1060,6 +1097,7 @@ export default function MedicinesPage() {
               onClick={previousImage}
               className="absolute left-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all"
               disabled={viewerImages.length <= 1}
+              aria-label="Previous image"
             >
               <ChevronLeft className="h-6 w-6" />
             </button>
@@ -1068,14 +1106,18 @@ export default function MedicinesPage() {
               onClick={nextImage}
               className="absolute right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all"
               disabled={viewerImages.length <= 1}
+              aria-label="Next image"
             >
               <ChevronRight className="h-6 w-6" />
             </button>
             
-            <img
+            <Image
               src={viewerImages[currentImageIndex]}
               alt={`Image ${currentImageIndex + 1}`}
+              width={800}
+              height={600}
               className="max-w-full max-h-full object-contain"
+              unoptimized={true}
             />
             
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black bg-opacity-50 rounded-full px-3 py-1 text-sm">

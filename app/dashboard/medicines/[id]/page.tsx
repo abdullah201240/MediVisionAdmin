@@ -195,6 +195,7 @@ export default function MedicineDetailsPage() {
                         width={200}
                         height={128}
                         className="w-full h-32 object-cover group-hover:scale-110 transition-transform"
+                        unoptimized={true}
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -285,7 +286,7 @@ export default function MedicineDetailsPage() {
                 Details & Description
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {/* English Details */}
               {medicine.details && (
                 <div>
@@ -306,7 +307,67 @@ export default function MedicineDetailsPage() {
                 </div>
               )}
 
-              {!medicine.details && !medicine.detailsBn && (
+              {/* Side Effects */}
+              {medicine.sideEffects && (
+                <div className="pt-4 border-t border-gray-200">
+                  <label className="text-sm font-semibold text-gray-600">Side Effects (English)</label>
+                  <p className="text-gray-700 mt-2 leading-relaxed whitespace-pre-wrap">
+                    {medicine.sideEffects}
+                  </p>
+                </div>
+              )}
+
+              {/* Side Effects (Bengali) */}
+              {medicine.sideEffectsBn && (
+                <div className="pt-4 border-t border-gray-200">
+                  <label className="text-sm font-semibold text-gray-600">Side Effects (বাংলা)</label>
+                  <p className="text-gray-700 mt-2 leading-relaxed whitespace-pre-wrap">
+                    {medicine.sideEffectsBn}
+                  </p>
+                </div>
+              )}
+
+              {/* Usage */}
+              {medicine.usage && (
+                <div className="pt-4 border-t border-gray-200">
+                  <label className="text-sm font-semibold text-gray-600">Usage (English)</label>
+                  <p className="text-gray-700 mt-2 leading-relaxed whitespace-pre-wrap">
+                    {medicine.usage}
+                  </p>
+                </div>
+              )}
+
+              {/* Usage (Bengali) */}
+              {medicine.usageBn && (
+                <div className="pt-4 border-t border-gray-200">
+                  <label className="text-sm font-semibold text-gray-600">Usage (বাংলা)</label>
+                  <p className="text-gray-700 mt-2 leading-relaxed whitespace-pre-wrap">
+                    {medicine.usageBn}
+                  </p>
+                </div>
+              )}
+
+              {/* How to Use */}
+              {medicine.howToUse && (
+                <div className="pt-4 border-t border-gray-200">
+                  <label className="text-sm font-semibold text-gray-600">How to Use (English)</label>
+                  <p className="text-gray-700 mt-2 leading-relaxed whitespace-pre-wrap">
+                    {medicine.howToUse}
+                  </p>
+                </div>
+              )}
+
+              {/* How to Use (Bengali) */}
+              {medicine.howToUseBn && (
+                <div className="pt-4 border-t border-gray-200">
+                  <label className="text-sm font-semibold text-gray-600">How to Use (বাংলা)</label>
+                  <p className="text-gray-700 mt-2 leading-relaxed whitespace-pre-wrap">
+                    {medicine.howToUseBn}
+                  </p>
+                </div>
+              )}
+
+              {!medicine.details && !medicine.detailsBn && !medicine.sideEffects && !medicine.sideEffectsBn && !medicine.usage && !medicine.usageBn && !medicine.howToUse && !medicine.howToUseBn && (
                 <p className="text-gray-500 italic">No detailed information available</p>
               )}
             </CardContent>
@@ -341,6 +402,7 @@ export default function MedicineDetailsPage() {
               width={800}
               height={600}
               className="max-h-[80vh] object-contain"
+              unoptimized={true}
             />
             <div className="text-white text-center mt-4">
               <p className="text-lg font-semibold">{medicine.name}</p>
@@ -368,6 +430,7 @@ export default function MedicineDetailsPage() {
                       width={80}
                       height={80}
                       className="w-full h-full object-cover"
+                      unoptimized={true}
                     />
                   </button>
                 ))}

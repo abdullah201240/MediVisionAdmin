@@ -241,6 +241,7 @@ export default function DashboardPage() {
                               width={200}
                               height={96}
                               className="w-full h-24 object-cover"
+                              unoptimized={true}
                             />
                           </div>
                         ) : (

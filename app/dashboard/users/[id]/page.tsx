@@ -256,6 +256,7 @@ export default function UserDetailsPage() {
               width={1200}
               height={320}
               className="w-full h-full object-cover"
+              unoptimized={true}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center  from-gray-100 to-gray-200">
@@ -281,6 +282,7 @@ export default function UserDetailsPage() {
                       width={160}
                       height={160}
                       className="w-full h-full object-cover"
+                      unoptimized={true}
                     />
                   ) : (
                     <div className="w-full h-full rounded-2xl from-blue-100 to-purple-100 flex items-center justify-center">

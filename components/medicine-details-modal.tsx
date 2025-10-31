@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Dialog,
   DialogContent,
@@ -9,11 +9,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { 
-  ArrowLeft, 
+ 
   Pill, 
   Calendar, 
-  MapPin, 
-  Package, 
   FileText,
   ImageIcon,
   ChevronLeft,
@@ -36,19 +34,19 @@ export function MedicineDetailsModal({ medicine, open, onOpenChange }: MedicineD
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const nextImage = () => {
+  const nextImage = useCallback(() => {
     if (medicine?.images) {
       setCurrentImageIndex((prev) => (prev + 1) % medicine.images!.length);
     }
-  };
+  }, [medicine]);
 
-  const previousImage = () => {
+  const previousImage = useCallback(() => {
     if (medicine?.images) {
       setCurrentImageIndex((prev) => 
         prev === 0 ? medicine.images!.length - 1 : prev - 1
       );
     }
-  };
+  }, [medicine]);
 
   useEffect(() => {
     if (!imageViewerOpen) return;
@@ -65,7 +63,7 @@ export function MedicineDetailsModal({ medicine, open, onOpenChange }: MedicineD
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [imageViewerOpen, medicine?.images]);
+  }, [imageViewerOpen, medicine, nextImage, previousImage]);
 
   const openImageViewer = (index: number) => {
     setCurrentImageIndex(index);
@@ -84,7 +82,7 @@ export function MedicineDetailsModal({ medicine, open, onOpenChange }: MedicineD
         hour: '2-digit',
         minute: '2-digit'
       });
-    } catch (error) {
+    } catch  {
       return '-';
     }
   };
@@ -102,7 +100,7 @@ export function MedicineDetailsModal({ medicine, open, onOpenChange }: MedicineD
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader className="flex-shrink-0">
+          <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Pill className="h-6 w-6 text-blue-600" />
@@ -282,7 +280,7 @@ export function MedicineDetailsModal({ medicine, open, onOpenChange }: MedicineD
                   <button
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                    className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
                       index === currentImageIndex
                         ? 'border-blue-500 scale-110'
                         : 'border-white/30 hover:border-white/60'

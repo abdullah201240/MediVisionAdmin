@@ -430,7 +430,7 @@ export default function DashboardLayout({
                     unoptimized={true}
                   />
                 ) : (
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-full  from-blue-500 to-purple-500 flex items-center justify-center">
                     <span className="text-white font-semibold text-sm">
                       {user.name.charAt(0).toUpperCase()}
                     </span>

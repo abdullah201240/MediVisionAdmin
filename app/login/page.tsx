@@ -27,10 +27,21 @@ export default function LoginPage() {
         description: 'Welcome to the MediVision Admin Dashboard!',
         variant: 'success',
       });
-    } catch (error: any) {
+    } catch (error) {
+      // Type-safe error handling
+      let errorMessage = 'Invalid email or password. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = (error as { message: string }).message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
       toast({
         title: 'Login Failed',
-        description: error.message || 'Invalid email or password. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -39,7 +50,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4">
+    <div className="min-h-screen flex items-center justify-center  from-blue-50 via-white to-blue-50 p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">

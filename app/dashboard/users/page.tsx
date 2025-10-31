@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { usersApi } from '@/lib/api';
 import { Trash2, Search, UserCheck, Shield, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Filter } from 'lucide-react';
+import Image from 'next/image';
 
 interface User {
   id: string;
@@ -57,11 +58,7 @@ export default function UsersPage() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [currentPage, pageSize, searchTerm, sortBy, sortOrder, roleFilter]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await usersApi.getAll({
@@ -97,9 +94,13 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchTerm, sortBy, sortOrder, roleFilter, toast]);
 
-  const handleDelete = async (id: string, userName: string) => {
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleDelete = useCallback(async (id: string, userName: string) => {
     if (!confirm(`Are you sure you want to delete user "${userName}"?`)) return;
 
     try {
@@ -110,16 +111,16 @@ export default function UsersPage() {
         variant: 'success',
       });
       fetchUsers();
-    } catch (error) {
+    } catch  {
       toast({
         title: 'Deletion Failed',
         description: 'Failed to delete user. Please try again.',
         variant: 'destructive',
       });
     }
-  };
+  }, [fetchUsers, toast]);
 
-  const handleSort = (field: string) => {
+  const handleSort = useCallback((field: string) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC');
     } else {
@@ -127,18 +128,18 @@ export default function UsersPage() {
       setSortOrder('ASC');
     }
     setCurrentPage(1);
-  };
+  }, [sortBy, sortOrder]);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
-  const handlePageSizeChange = (size: number) => {
+  const handlePageSizeChange = useCallback((size: number) => {
     setPageSize(size);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const getSortIcon = (field: string) => {
+  const getSortIcon = useCallback((field: string) => {
     if (sortBy !== field) {
       return <ArrowUpDown className="h-4 w-4 ml-1 text-gray-400" />;
     }
@@ -147,9 +148,9 @@ export default function UsersPage() {
     ) : (
       <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />
     );
-  };
+  }, [sortBy, sortOrder]);
 
-  const formatDate = (dateString: string): string => {
+  const formatDate = useCallback((dateString: string): string => {
     if (!dateString) {
       console.log('Date is empty or undefined:', dateString);
       return '-';
@@ -173,7 +174,26 @@ export default function UsersPage() {
       console.error('Error formatting date:', dateString, error);
       return '-';
     }
-  };
+  }, []);
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  const handleRoleFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setRoleFilter(e.target.value);
+    setCurrentPage(1);
+  }, []);
+
+  const handleSortByChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortBy(e.target.value);
+    setCurrentPage(1);
+  }, []);
+
+  const handleSortOrderToggle = useCallback(() => {
+    setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC');
+    setCurrentPage(1);
+  }, [sortOrder]);
 
   const adminUsers = users.filter((u) => u.role === 'admin');
   const regularUsers = users.filter((u) => u.role === 'user');
@@ -228,7 +248,7 @@ export default function UsersPage() {
                 <Input
                   placeholder="Search users..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={handleSearchChange}
                   className="pl-10"
                 />
               </div>
@@ -238,11 +258,9 @@ export default function UsersPage() {
                 <Filter className="h-4 w-4 text-gray-600" />
                 <select
                   value={roleFilter}
-                  onChange={(e) => {
-                    setRoleFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={handleRoleFilterChange}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Filter by role"
                 >
                   <option value="all">All Roles</option>
                   <option value="user">Users Only</option>
@@ -255,11 +273,9 @@ export default function UsersPage() {
                 <label className="text-sm font-medium text-gray-700">Sort by:</label>
                 <select
                   value={sortBy}
-                  onChange={(e) => {
-                    setSortBy(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={handleSortByChange}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Sort by field"
                 >
                   <option value="createdAt">Date Joined</option>
                   <option value="name">Name (A-Z)</option>
@@ -272,10 +288,7 @@ export default function UsersPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC');
-                  setCurrentPage(1);
-                }}
+                onClick={handleSortOrderToggle}
                 className="flex items-center gap-2"
                 title={`Sort ${sortOrder === 'ASC' ? 'Descending' : 'Ascending'}`}
               >
@@ -304,6 +317,7 @@ export default function UsersPage() {
                 value={pageSize}
                 onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                 className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label="Items per page"
               >
                 <option value={5}>5 per page</option>
                 <option value={10}>10 per page</option>
@@ -375,11 +389,24 @@ export default function UsersPage() {
                     <TableRow key={user.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                            <span className="text-blue-600 font-semibold text-sm">
-                              {user.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
+                          {user.image ? (
+                            <div className="h-8 w-8 rounded-full overflow-hidden">
+                              <Image 
+                                src={`http://localhost:3000/uploads/users/${user.image}`}
+                                alt={user.name}
+                                width={32}
+                                height={32}
+                                className="w-full h-full object-cover"
+                                unoptimized={true}
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                              <span className="text-blue-600 font-semibold text-sm">
+                                {user.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
                           <span className="font-medium">{user.name}</span>
                         </div>
                       </TableCell>
